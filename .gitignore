@@ -10,7 +10,7 @@ CTestTestfile.cmake
 
 **/build/
 **/*.o
-result/
-resources/
-lib/segbench/Dataset/
-bin/
+result/*
+resources/*
+lib/segbench/Dataset/*
+bin/*

@@ -33,7 +33,7 @@ if ~exist('thresh', 'var') || isempty(thresh)
 end
 
 % load classifiers
-datadir = './data/';
+datadir = 'resources/ClassifierData';
 
 load(fullfile(datadir, 'boundaryClassifiers.mat'));
 load(fullfile(datadir, 'continuityClassifiers.mat'));

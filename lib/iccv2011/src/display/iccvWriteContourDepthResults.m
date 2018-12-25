@@ -17,10 +17,10 @@ function iccvWriteContourDepthResults
 %writeDepthImages(resdir, fn, outdir);
 
 resdir = './result/';
-imdir =  '/run/media/he/data/Experiment/iccv07Final/GeometricContext/test_dir/images/';
+imdir =  './resources/GeometricContextDataset/images/';
 fn = {'house05.jpg'};
-outdir = '/run/media/he/data/Experiment/iccv07Final/result/';
-gtdir = '/run/media/he/data/Experiment/iccv07Final/GeometricContext/gtsave/';
+outdir = './result/';
+gtdir = './resources/GeometricContextDataset/gtsave/';
 
 for f = 1:numel(fn)
     
@@ -51,7 +51,7 @@ for f = 1:numel(fn)
     end
     end
     
-    if 1
+    if 0
         load([resdir bn '_seg.mat']);
 %         load([outdir bn '_contact.mat']);
     

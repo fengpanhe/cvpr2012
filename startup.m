@@ -1,5 +1,6 @@
-
-run('./lib/addpath.m')
-addpath(genpath('./src'))
-% cd ./lightspeed-master
-% install_lightspeed
+addpath(genpath('./lib/lightspeed-master'))
+addpath(genpath('./lib/segbench/lib/matlab'))
+addpath(genpath('./lib/GeometricContext'))
+addpath(genpath('./lib/iccv07-train'))
+addpath(genpath('./lib/iccv2011'))
+addpath(genpath('./src'));

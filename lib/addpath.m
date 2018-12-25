@@ -1,5 +1,0 @@
-addpath(genpath('./lightspeed-master'))
-addpath(genpath('./segbench/lib/matlab'))
-addpath(genpath('./GeometricContext'))
-addpath(genpath('./iccv07-train'))
-addpath(genpath('./iccv2011'))

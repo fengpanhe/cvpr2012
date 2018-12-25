@@ -25,7 +25,7 @@ end
 wseg = splab(bndinfo.wseg);
 
 % XXX only reading image until seg2fragments gets fixed
-im = imread(['/run/media/he/data/Experiment/iccv07Final/GeometricContext/test_dir/images/' bndinfo.imname]);
+im = imread(['./resources/GeometricContextDataset/images/' bndinfo.imname]);
 im = im2double(im);
 
 [edges, juncts, neighbors, wseg] = seg2fragments(wseg, im, 1);
