@@ -1,0 +1,40 @@
+function X = updateGeometricFeatures(fn, X, segmaps, cvnum, gdatadir)
+
+global DO_DISPLAY;
+
+gclassdir = '/usr1/projects/GeometricContext/data/ijcv06/
+
+gclass1 = load('/usr1
+
+for f = 1:numel(fn)
+    bn = strtok(fn{f}, '.');
+    
+    gdata = load([gdatadir bn '_gdata.mat']);
+    
+    if isempty(segmaps{f}), segmaps{f} = (1:gdata.imsegs.nseg); end
+        
+    pg = ijcvEstimateGeometry([], gdata.imsegs, gclassifiers, ...
+        segmaps{f}, gdata.spdata, gdata.imdata);
+    
+    X(f).region.geomContext2 = pg;    
+    
+    area = gdata.imsegs.npixels;
+    X(f).region.textureHist = zeros(max(segmaps{f}(:)), 15);
+    for k = 1:max(segmaps{f})
+        ind = find(segmaps{f}==k);
+        X(f).region.textureHist(k, :) = sum(gdata.spdata(ind, 30:44) .* ...
+            repmat(area(ind), [1 15])) / sum(area(ind));
+    end
+        
+    if DO_DISPLAY
+        gconf = [sum(pg(:, 2:5),2) pg(:, 1) pg(:, 7)];
+        gim = zeros([gdata.imsegs.imsize 3]);
+        wseg = segmaps{f}(gdata.imsegs.segimage);
+        for k = 1:3
+            tmp = gconf(:, k);
+            gim(:, :, k) = tmp(wseg);
+        end
+        figure(1), imagesc(gim), axis image
+    end
+    
+end

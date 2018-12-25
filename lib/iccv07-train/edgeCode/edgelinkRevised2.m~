@@ -1,0 +1,344 @@
+% EDGELINK - Link edge points in an image into lists
+%
+% Usage: [edgelist edgeim] = edgelink(eim, jim, minlength, location)
+%
+% Arguments:  eim        - Binary edge image, it is assumed that edges
+%                          have been thinned.
+%             jim        - Junction image (non-zero where juncts exist)   
+%             minlength  - Optional minimum edge length of interest, defaults
+%                          to 1 if omitted or specified as [].
+%             location   - Optional complex valued image holding subpixel
+%                          locations of edge points. For any pixel the
+%                          real part holds the subpixel row coordinate of
+%                          that edge point and the imaginary part holds
+%                          the column coordinate.  See NONMAXSUP.  If
+%                          this argument is supplied the edgelists will
+%                          be formed from the subpixel coordinates,
+%                          otherwise the the integer pixel coordinates of
+%                          points in 'im' are used.
+%
+% Returns:  edgelist - a cell array of edge lists in row,column coords in
+%                      the form
+%                     { [r1 c1   [r1 c1   etc }
+%                        r2 c2    ...
+%                        ...
+%                        rN cN]   ....]   
+%
+%           edgeim   - Image with pixels labeled with edge number. Note that
+%                      this image also includes edges that do not meet the
+%                      minimum length specification.  If you want to see just
+%                      the edges that meet the specification you should pass
+%                      the edgelist to DRAWEDGELIST.
+%
+%
+% This function links edge points together into lists of coordinate pairs.
+% Where an edge junction is encountered the list is terminated and a separate
+% list is generated for each of the branches.
+%
+% See also:  DRAWEDGELIST, LINESEG, MAXLINEDEV, CLEANEDGELIST, FINDENDSJUNCTIONS
+%
+% Bugs: This code has caused me much grief on and off.  I keep discovering cases
+% that do not get handled properly. The logic has grown in a way that is less
+% structured than I would like.  At the moment I am aware that if there are two
+% adjacent junction points things may go a bit astray.
+%
+% You may find a few edges that are needlessly broken into two, or more,
+% segements.  This should be fixed up by CLEANEDGELIST which gets called if
+% you specify a non-empty value for minlength.  Use a value of 0 if you want to
+% fix this without trimming small edges.
+%
+% It may be that you encounter problems in the call to CLEANEDGELIST (which
+% has perhaps caused me even more grief).  By calling edgelink with just the
+% image arguments, or with an empty value for minlength, CLEANEDGELIST will
+% not be called, and you will be spared any errors there.
+
+
+% Acknowledgement:
+% Some of this code is inspired by David Lowe's Link.c function from the
+% Vista image processing library developed at the University of British
+% Columbia 
+%    http://www.cs.ubc.ca/nest/lci/vista/vista.html
+
+% Copyright (c) 2001-2007 Peter Kovesi
+% School of Computer Science & Software Engineering
+% The University of Western Australia
+% http://www.csse.uwa.edu.au/
+% 
+% Permission is hereby granted, free of charge, to any person obtaining a copy
+% of this software and associated documentation files (the "Software"), to deal
+% in the Software without restriction, subject to the following conditions:
+% 
+% The above copyright notice and this permission notice shall be included in 
+% all copies or substantial portions of the Software.
+%
+% The Software is provided "as is", without warranty of any kind.
+
+% February  2001 - Original version
+% September 2004 - Revised to allow subpixel edge data to be used
+% November  2006 - Changed so that edgelists start and stop at every junction 
+% January   2007 - Prefiltering to to discard isolated pixels and the
+%                  problems they cause(thanks to Jeff Copeland)
+% January   2007 - Fixes to ensure closed loops are closed, and a few other
+%                  cases are handled better
+% February  2007 - Modified by Derek Hoiem (5x speedup)
+
+
+function [edgelist, edgeim] = edgelinkRevised2(eim, jim, junctions, minlength, location)
+    
+    global EDGEIM;      % Some global variables to avoid passing (and
+                        % copying) of arguments, this improves speed --NOT!
+    global BIM;    
+    %[RJ, CJ] = find(jim);
+    
+    EDGEIM = double(eim);   % Convert to double to allow the use of -ve labelings
+    edgeNo = 0;        
+       
+    JIM = (jim > 0);
+    
+    % image with border pixels on
+    BIM = false(size(JIM));
+    BIM([1 end], :) = true;
+    BIM(:, [1 end]) = true;
+    
+    % Perform raster scan through image looking for edge points.  When a
+    % point is found trackedge is called to find the rest of the edge
+    % points.  As it finds the points the edge image pixels are labeled
+    % with the -ve of their edge No    
+    ind = find(eim);
+    for i = ind(:)'
+        if EDGEIM(i) == 1 && ~JIM(i)
+            [edgepoints, status] = trackedge(i, edgeNo+1, jim, junctions);
+            if ~isempty(edgepoints) && ~status==0 % ignore non-closed contours
+                edgeNo = edgeNo + 1;		    
+    		    edgelist{edgeNo} = edgepoints;
+            else
+                EDGEIM(edgepoints) = 1;
+            end
+        end        
+    end        
+    
+    edgeim = -EDGEIM;  % Finally negate image to make edge encodings +ve.
+
+    
+    % Eliminate isolated edges and spurs that are below the minimum length
+
+    if nargin >= 4 && ~isempty(minlength)
+        edgelist = cleanedgelist(edgelist, minlength);
+    
+    else  % Call cleanedgelist with 0 minlength anyway to fix spurrious nodes
+          % that may exist due to problem with EDGELINK at points where
+          % junctions are adjacent.
+        %edgelist = cleanedgelist(edgelist, 0);
+    end
+   
+    
+    % If subpixel edge locations are supplied upgrade the integer precision
+    % edgelists that were constructed with data from 'location'.
+    if nargin == 5
+	for I = 1:length(edgelist)
+	    ind = sub2ind(size(eim),edgelist{I}(:,1),edgelist{I}(:,2));
+	    edgelist{I}(:,1) = real(location(ind))';
+	    edgelist{I}(:,2) = imag(location(ind))';    
+	end
+    end
+    
+    
+%----------------------------------------------------------------------    
+% TRACKEDGE
+%
+% Function to track all the edge points associated with a start point.  From a
+% given starting point it tracks in one direction, storing the coords of the
+% edge points in an array and labelling the pixels in the edge image with the
+% -ve of their edge number. This continues until no more connected points are
+% found, or a junction point is encountered.  At this point the function returns
+% to the start point and tracks in the opposite direction.
+%
+% Usage:   edgepoints = trackedge(rstart, cstart, edgeNo)
+% 
+% Arguments:   istart   - index No of starting point
+%              edgeNo           - the current edge number
+%              minlength        - minimum length of edge to accept
+%
+% Returns:     edgepoints       - Nx2 array of row and col values for
+%                                 each edge point.
+
+function [edgepoints, status] = trackedge(istart, edgeNo, jim, junctions)
+    
+    global EDGEIM;
+    global BIM;       
+    
+    JIM = (jim>0);
+    [ROWS, COLS] = size(EDGEIM);
+    
+    % left up right down up-left up-right down-right down-left
+%    N8 = ROWS*[-1 0 1 0 -1 1 1 -1] + [0 -1 0 1 -1 -1 1 1];
+    N8 = ROWS*[-1 0 1 1 1 0 -1 -1] + [-1 -1 -1 0 1 1 1 0];
+    
+    noPoint = 0;
+    thereIsAPoint = 1;
+    lastPoint = 2;
+    
+    edgepoints = istart;      % Start a new list for this edge.
+    EDGEIM(istart) = -edgeNo;   % Edge points in the image are 
+			               % encoded by -ve of their edgeNo.                             
+                           
+    i = istart;                       
+    status = thereIsAPoint;
+    while status == thereIsAPoint % have not hit junction or end
+        [status, i] = nextpoint(i, edgeNo, EDGEIM, JIM, N8, BIM); % Find next connected pt
+        if status ~= noPoint
+            edgepoints = [edgepoints ; i];         % Add point to point list
+            EDGEIM(i) = -edgeNo;               % Update edge image
+        end        
+    end
+    if status == lastPoint
+        j1 = jim(i);
+    end
+    if status == 
+        
+    % Now track from original point in the opposite direction - but only if
+    % the starting point was not a junction point
+    
+    if ~JIM(istart)        
+	% First reverse order of existing points in the edge list
+	edgepoints = flipud(edgepoints);  
+	
+	% ...and start adding points in the other direction.
+    i = istart;
+    status = thereIsAPoint;
+    num = 0;
+    while status == thereIsAPoint % have not hit junction or end
+        lasti = i;
+        [status, i] = nextpoint(i, edgeNo, EDGEIM, JIM, N8, BIM); % Find next connected pt
+                                
+        % do not add point that is part of original junction or an edge
+        % adjacenct to that junction
+        ignorej = [];
+        if num==0  && status==thereIsAPoint, 
+            nbi = neighbors(i, ROWS, COLS, BIM, N8); 
+        end
+        while ((status==lastPoint) && (jim(i)==j1)) ||  ...
+                ((num==0) && (status==thereIsAPoint) && ...
+                             any(j1==jim(nbi)))                                       
+
+            ignorej(end+1) = i;
+            JIM(i) = 0;
+            EDGEIM(i) = 0;
+            [status, i] = nextpoint(lasti, edgeNo, EDGEIM, JIM, N8, BIM);
+            if num==0  && status==thereIsAPoint, 
+                nbi = neighbors(i, ROWS, COLS, BIM, N8); 
+            end                    
+        end
+        JIM(ignorej) = 1;
+        EDGEIM(ignorej) = 1;
+        num = 1;
+
+        if status ~= noPoint
+            edgepoints = [edgepoints ; i];         % Add point to point list
+            EDGEIM(i) = -edgeNo;               % Update edge image
+        end        
+    end
+    end
+    
+    % Final check to see if this edgelist should have start and end points
+    % matched to form a loop.  If the number of points in the list is four or
+    % more (the minimum number that could form a loop), and the endpoints are
+    % within a pixel of each other, append a copy if the first point to the
+    % end to complete the loop
+    
+    if 0
+    [ey, ex] = ind2sub([ROWS COLS], edgepoints);
+    edgepoints = [ey ex];
+       
+    if length(edgepoints) >= 4
+	if abs(edgepoints(1,1) - edgepoints(end,1)) <= 1  &&  ...
+           abs(edgepoints(1,2) - edgepoints(end,2)) <= 1 
+	    edgepoints = [edgepoints
+			  edgepoints(1,:)];
+	end
+    end
+    edgepoints = sub2ind([ROWS COLS], edgepoints);
+    end
+    
+%----------------------------------------------------------------------    
+%
+% NEXTPOINT
+%
+% Function finds a point that is 8 connected to an existing edge point
+%
+
+function [status, nexti] = nextpoint(ip, edgeNo, EDGEIM, JIM, N8, BIM)
+    
+    noPoint = 0;
+    thereIsAPoint = 1;
+    lastPoint = 2;       
+    
+    [ROWS, COLS] = size(EDGEIM);
+    
+    % neighborhood of ip that are within image bounds    
+    ni = neighbors(ip, ROWS, COLS, BIM, N8);
+    
+    % Search through neighbours and see if one is a junction point
+    for i = ni 
+        if JIM(i) && (EDGEIM(i) ~= -edgeNo)
+            % This is a junction point that we have not marked as part of
+            % this edgelist
+            nexti = i;
+            status = lastPoint;
+            return;             % break out and return with the data
+        end
+    end
+    
+    % If we get here there were no junction points.  Search through neighbours
+    % and return first connected edge point that itself has less than two
+    % neighbours connected back to our current edge.  This prevents occasional
+    % erroneous doubling back onto the wrong segment
+
+    checkFlag = 0;
+    for i = ni
+	if EDGEIM(i) == 1
+        tni = neighbors(i, ROWS, COLS, BIM, N8);
+        n = EDGEIM(tni); % edgeim val of neighbors
+                
+	    %n = neighbours(i);
+	    if sum(n==-edgeNo) < 2
+		nexti = i;
+		status = thereIsAPoint;
+		return;             % break out and return with the data
+	    
+	    else                    % Remember this point just in case we
+		checkFlag = 1;      % have to use it
+		rememberi = i;	
+	    end
+	    
+	end
+    end
+    
+    % If we get here (and 'checkFlag' is true) there was no connected edge point
+    % that had less than two connections to our current edge, but there was one
+    % with more.  Use the point we remembered above.
+    if checkFlag      
+	nexti = rememberi;
+	status = thereIsAPoint;       
+	return;                % Break out
+    end
+        
+    % If we get here there was no connecting next point at all.
+    nexti = 0;
+    status = noPoint;
+
+        
+%------------------------------------------------------------------------
+% Function to get the values of the 8 neighbouring pixels surrounding a point
+% of interest.  The values are ordered from the top-left point going
+% anti-clockwise around the pixel.
+function nbi = neighbors(i, ROWS, COLS, BIM, N8)
+    
+nbi = i + N8; % neighborhood
+nbi = nbi(nbi>0 & nbi < ROWS*COLS);           
+if BIM(i)
+    ipx = floor((i-1)/ROWS)+1;  ipy = mod(i-1, ROWS)+1;
+    nix = floor((nbi-1)/ROWS)+1;  niy = mod(nbi-1, ROWS)+1;
+    nbi = nbi(abs(nix-ipx)<2 & abs(niy-ipy)<2);
+end 
+    

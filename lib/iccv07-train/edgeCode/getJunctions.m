@@ -1,0 +1,89 @@
+function [junctions, jim, eim, wseg] = getJunctions(wseg)
+
+% convert wseg to skelatonized version, padded with edges
+wseg = padarray(wseg, [1 1], 0, 'both');
+[imh, imw] = size(wseg);
+npix = imh*imw;
+
+eim = (wseg==0);
+eim = single(bwmorph(eim, 'skel', Inf));
+
+
+% 8-neighborhood index increment
+N8 = imh*[-1 0 1 -1 1 -1 0 1] + [-1 -1 -1 0 0 1 1 1]; 
+ind = find(wseg==0 & ~eim);
+for k = 1:numel(ind)
+    nbind = ind(k) + N8;
+    nbind = nbind(nbind>0 & nbind<=npix);
+    patch = wseg(nbind);
+    wseg(ind(k)) = mode(single(patch(patch>0)));
+end
+figure(1), imagesc(wseg), axis image, colormap jet
+
+
+% get junctions
+% more than two edges in eight-neighboorhood but not two edges in a row
+% (not counting center)
+jim = eim & ((imfilter(eim, [1 1 1; 1 0 1; 1 1 1])>2) & ...
+    ~((imfilter(eim, [1 1 0; 0 0 0; 0 0 0])==2) | ...
+    (imfilter(eim, [0 1 1; 0 0 0; 0 0 0])==2) | ...
+    (imfilter(eim, [0 0 1; 0 0 1; 0 0 0])==2) | ...
+    (imfilter(eim, [0 0 0; 0 0 1; 0 0 1])==2) | ...
+    (imfilter(eim, [0 0 0; 0 0 0; 0 1 1])==2) | ...
+    (imfilter(eim, [0 0 0; 0 0 0; 1 1 0])==2) | ...
+    (imfilter(eim, [0 0 0; 1 0 0; 1 0 0])==2) | ...
+    (imfilter(eim, [1 0 0; 1 0 0; 0 0 0])==2)));
+jim = jim + (eim & (imfilter(single(jim), ones(3))==0) & (imfilter(eim, [1 1 1; 1 0 1; 1 1 1])>3));
+
+% find the few junctions that may be missed 
+ind = find(eim);
+ex = floor((ind-1)/imh)+1;  ey = mod(ind-1, imh)+1;
+for k = 1:numel(ind)       
+    if ey(k)>1 && ey(k)<imh && ex(k)>1 && ex(k)<imw 
+        nbvals = wseg(ind(k)+N8);  
+        nnsegs = numel(unique(nbvals(nbvals>0)));    
+        if nnsegs>2 || nnsegs==0
+            jim(ind(k)) = 1;
+        end
+    end
+end
+
+[jim, nj] = bwlabel(jim, 8);
+junctions = cell(nj, 1);
+ind = find(jim>0);
+for k = 1:numel(ind)
+    j = jim(ind(k));
+    junctions{j}(end+1) = ind(k);
+end
+
+
+% remove unneeded junction points
+for k = 1:numel(junctions)    
+    if numel(junctions{k})>1
+        remind = false(numel(junctions{k}), 1);
+        nbvals = cell(numel(junctions{k}), 1);
+        ind = junctions{k};
+        ex = floor((ind-1)/imh)+1;  ey = mod(ind-1, imh)+1;       
+        for k2 = 1:numel(junctions{k})
+            if ex(k2)<imw && ey(k2)<imh
+                nbvals{k2} = wseg(junctions{k}(k2)+N8);
+                nbvals{k2} = nbvals{k2}(nbvals{k2}>0);                                
+            end
+        end        
+        for j1 = 1:numel(junctions{k})
+            remind(j1) = true;
+            othernb = cat(2, nbvals{~remind});
+            if numel(nbvals{j1})<=0 || (~all(ismember(nbvals{j1}, othernb))) || ...
+                    numel(unique(nbvals{j1}))>=3
+                remind(j1) = false;
+            end
+        end
+        jim(junctions{k}(remind)) = 0;
+        junctions{k}(remind) = [];
+    end
+end
+
+figure(3), imagesc((eim>0) + (jim>0)), axis image
+
+
+

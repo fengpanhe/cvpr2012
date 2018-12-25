@@ -1,0 +1,30 @@
+function gclassifiers = iccvTrainGeometry(fn, segmaps, ncv, gdatadir)
+
+for tf = 1:numel(fn)
+
+    f = cv_images(tf);
+    c = ceil(tf/numel(cv_images)*ncv);
+        
+    gdata = load([gdatadir strtok(fn{f}, '.') '_gdata.mat']);
+    
+    if isempty(segmaps{tf})
+        segmaps{tf} = (1
+    
+    labdata{tf} = mcmcGetSegmentFeatures(gdata.imsegs, gdata.spdata, gdata.imdata, ...
+        segmaps{tf}, (1:max(segmaps{tf})));
+    [mclab{tf}, mcprc{tf}, allprc{tf}, trainw{tf,1}] = ...
+        segmentation2labels(gdata.imsegs, segmaps{tf});
+    unilabel{tf,1} = mclab{tf}; % .*(mcprc{tf, k}>0.95);                                            
+end
+
+for k = 1:ncv    
+    disp(['Iteration: ' num2str(k)]);
+    testind = (floor((k-1)*numel(cv_images)/ncv)+1):(floor(k*numel(cv_images)/ncv));
+    trainind = setdiff([1:numel(cv_images)], testind);
+    [vclassifier(k), hclassifier(k)] = ...
+        mcmcTrainSegmentClassifier2(labdata(trainind),...
+        unilabel(trainind,1), trainw(trainind), 50000);       
+end
+
+gclassifiers.vclassifier = vclassifier;
+gclassfieirs.hclassifier = hclassifier;
