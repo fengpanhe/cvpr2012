@@ -1,0 +1,3 @@
+[submodule "lib/svm-struct-matlab"]
+	path = lib/svm-struct-matlab
+	url = https://github.com/vedaldi/svm-struct-matlab.git
