@@ -14,3 +14,4 @@ result/*
 resources/*
 lib/segbench/Dataset/*
 bin/*
+.vscode
