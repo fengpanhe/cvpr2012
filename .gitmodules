@@ -1,0 +1,3 @@
+[submodule "lib/svm-struct-matlab"]
+	path = lib/svm-struct-matlab
+	url = git@github.com:microhe/svm-struct-matlab.git
