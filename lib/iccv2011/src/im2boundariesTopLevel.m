@@ -55,3 +55,5 @@ gconf = gconf{1}(:, :, 1:7);
 disp('boundaries')
 [bndinfo, bndinfo_all] = im2boundaries(im, pbim, gconf, dtBnd, dtBnd_fast, dtCont, ...
     gdata, gclassifiers2, thresh);
+bndinfo.pbim = pbim;
+bndinfo.gconf = gconf;
