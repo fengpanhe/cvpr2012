@@ -5,7 +5,7 @@ eindices = bndinfo.edges.indices;
 ejunction = bndinfo.edges.junctions;
 jPos = bndinfo.junctions.position;
 
-%% Tjfeatures
+%% T junction feature info
 Tjinfo =  {};
 for k = 1:size(jPos, 1)
     adjacentEdgeIndexs = find(ejunction == k);
@@ -14,14 +14,15 @@ for k = 1:size(jPos, 1)
         % not T-junction
         continue;
     end
-    adjacentEdgeInfo = [];
-    adjacentEdgeInfo.XY = cell(3,1);
-    adjacentEdgeInfo.directionVector = cell(3,1);
-    adjacentEdgeInfo.angles = cell(3,1);
-    adjacentEdgeInfo.edgeConvexityFeature = cell(3,1);
+    
+    edgeId = zeros([3, 1], 'single');
+    % XY = cell(3, 1)
+    directionVector = zeros([3, 2], 'single');
+    angles = zeros([3, 2], 'single');
+    edgeConvexityFeature = zeros([3, 36], 'single');
     for k1 = 1:numel(adjacentEdgeIndexs)
         [i, j] = ind2sub(size(ejunction), adjacentEdgeIndexs(k1));
-        [edgeX, edgeY] = ind2sub(imsize(1:2), double(eindices{i}));
+        [edgeY, edgeX] = ind2sub(imsize(1:2), double(eindices{i}));
         edgeXY = [edgeX, edgeY];
         if j == 2
             edgeXY = flip(edgeXY);
@@ -30,39 +31,42 @@ for k = 1:size(jPos, 1)
         dv = clacDirectionVector(edgeXY);
         ecf = getEdgeConvexityFeature(edgeXY);
         
-        adjacentEdgeInfo.XY{k1, 1}  = edgeXY;
-        adjacentEdgeInfo.directionVector{k1, 1} =  dv;
-        adjacentEdgeInfo.edgeConvexityFeature{k1, 1} = ecf;
+        edgeId(k1, 1) = i;
+        % XY(k1, 1)  = edgeXY;
+        directionVector(k1, :) =  dv;
+        edgeConvexityFeature(k1, :) = ecf;
         
-%         vX = edgeX;
-%         vY = vX * (dv(2)/ dv(1));
-%         vY = vY + (edgeY(1) - vY(1));
-%         plot(edgeXY(:, 1),edgeXY(:, 2), vX, vY);
-%         plot(edgeX, edgeX * (dv(2)/ dv(1)),'-');
     end
     
-    dvs = adjacentEdgeInfo.directionVector;
-    angle1 = clacVectorsAngle(dvs{1}, dvs{2});
-    angle2 = clacVectorsAngle(dvs{1}, dvs{3});
-    angle3 = clacVectorsAngle(dvs{2}, dvs{3});
+    angle1 = clacVectorsAngle(directionVector(1, : ), directionVector(2, : ));
+    angle2 = clacVectorsAngle(directionVector(1, : ), directionVector(3, : ));
+    angle3 = clacVectorsAngle(directionVector(2, : ), directionVector(3, : ));
     
-    adjacentEdgeInfo.angles{1} =  [angle1, angle2];
-    adjacentEdgeInfo.angles{2} =  [angle1, angle3];
-    adjacentEdgeInfo.angles{3} =  [angle2, angle3];
+    angles(1, : ) =  [angle1, angle2];
+    angles(2, : ) =  [angle1, angle3];
+    angles(3, : ) =  [angle2, angle3];
+
+    adjacentEdgeInfo = [];
+    adjacentEdgeInfo.edgeId = num2cell(edgeId);
+    % adjacentEdgeInfo.XY = num2cell(XY);
+    adjacentEdgeInfo.directionVector = num2cell(directionVector);
+    adjacentEdgeInfo.angles = num2cell(angles);
+    adjacentEdgeInfo.edgeConvexityFeature = num2cell(edgeConvexityFeature);
     Tjinfo{end + 1, 1} = adjacentEdgeInfo;
 end
 
+% edge feature info
 X = getFeatures(bndinfo, im, bndinfo.pbim, bndinfo.gconf);
 
 combinedFeatures.TJInfo = Tjinfo;
 combinedFeatures.TJnum = size(Tjinfo, 1);
-
 combinedFeatures.edgeInfo = X.edge;
 
 
 
-%% Calculate the direction vector of a set of points 
+
 function directionVector = clacDirectionVector(pos)
+%% Calculate the direction vector of a set of points 
 X = pos(:,1);
 Y = pos(:,2);
 p = polyfit(X, Y, 1);
@@ -72,13 +76,14 @@ if mean(X) < X(1)
 end
 directionVector = vector / norm(vector);
     
-%% calclate angle between two vectors
-function angle = clacVectorsAngle(v1, v2)
 
+function angle = clacVectorsAngle(v1, v2)
+%% calclate angle between two vectors
 angle = acos(dot(v1, v2) / norm(v1) * norm(v2));
 
-%% get the convexity feature of edge
+
 function ECFeature = getEdgeConvexityFeature(edgeXY)
+%% get the convexity feature of edge
 
 lb = edgeXY(end, :) - edgeXY(1, :);
 lb_atan2d = atan2d(lb(2), lb(1));
