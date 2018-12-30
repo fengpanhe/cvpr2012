@@ -52,7 +52,31 @@ for k = 1:TJnum
     col = col + 9;
     % disp(col);
     if size(boundarylabs) ~= 0
-        
+        elabs = boundarylabs(eIds);
+        eFlip = cell2mat(tjinfo.edgeFlip);
+        for e_k = 1:numel(elabs)
+            if eFlip(e_k) == 1
+                elabs(e_k) = (elabs(e_k) == 1) * 2 + (elabs(e_k) == 2);
+            end
+        end
+        evalues = zeros([3, 1], 'single');
+        evalues(2) = evalues(1) + (elabs(1) == 1) * (-3) + (elabs(1) == 2) * 3;
+        evalues(3) = evalues(2) + (elabs(2) == 1) * (-2) + (elabs(2) == 2) * 2;
+        evalues(1) = evalues(3) + (elabs(3) == 1) * (-1) + (elabs(3) == 2) * 1;
+
+        max_value = max(evalues);
+        min_value = min(evalues);
+
+        for k = 1:numel(evalues)
+            if evalues(k) == max_value
+                evalues(k) = 3;
+            elseif evalues(k) == min_value
+                evalues(k) = 1;
+            else
+                evalues(k) = 2;
+            end
+        end
+        lables(row, 1) = evalues;
     end
 end
 

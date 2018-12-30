@@ -14,9 +14,9 @@ for k = 1:size(jPos, 1)
         % not T-junction
         continue;
     end
-    
-    edgeId = zeros([3, 1], 'single');
     % XY = cell(3, 1)
+    edgeId = zeros([3, 1], 'single');
+    edgeFlip = zeros([3, 1], 'single');
     directionVector = zeros([3, 2], 'single');
     angles = zeros([3, 2], 'single');
     edgeConvexityFeature = zeros([3, 36], 'single');
@@ -26,6 +26,7 @@ for k = 1:size(jPos, 1)
         edgeXY = [edgeX, edgeY];
         if j == 2
             edgeXY = flip(edgeXY);
+            edgeFlip(k1, 1) = 1;
         end
 
         dv = clacDirectionVector(edgeXY);
@@ -35,7 +36,6 @@ for k = 1:size(jPos, 1)
         % XY(k1, 1)  = edgeXY;
         directionVector(k1, :) =  dv;
         edgeConvexityFeature(k1, :) = ecf;
-        
     end
     
     angle1 = clacVectorsAngle(directionVector(1, : ), directionVector(2, : ));
@@ -46,8 +46,27 @@ for k = 1:size(jPos, 1)
     angles(2, : ) =  [angle1, angle3];
     angles(3, : ) =  [angle2, angle3];
 
+    % Align three sides clockwise
+    atan2ds = atan2d(directionVector(:, 2), directionVector(:, 1));
+    clockwiseAngle1_2 = atan2ds(1) - atan2ds(2);
+    if clockwiseAngle1_2 < 0
+        clockwiseAngle1_2 = clockwiseAngle1_2 + 360;
+    end
+    clockwiseAngle1_3 = atan2ds(1) - atan2ds(3);
+    if clockwiseAngle1_3 < 0
+        clockwiseAngle1_3 = clockwiseAngle1_3 + 360;
+    end
+    if clockwiseAngle1_3 < clockwiseAngle1_2
+        edgeId([2,3], : ) = edgeId([3,2], : );
+        edgeFlip([2,3], : ) = edgeFlip([3,2], : );
+        directionVector([2,3], : ) = directionVector([3,2], : );
+        angles([2,3], : ) = angles([3,2], : );
+        edgeConvexityFeature([2,3], : ) = edgeConvexityFeature([3,2], : );
+    end
+
     adjacentEdgeInfo = [];
     adjacentEdgeInfo.edgeId = num2cell(edgeId);
+    adjacentEdgeInfo.edgeFlip = num2cell(edgeFlip);
     % adjacentEdgeInfo.XY = num2cell(XY);
     adjacentEdgeInfo.directionVector = num2cell(directionVector);
     adjacentEdgeInfo.angles = num2cell(angles);
