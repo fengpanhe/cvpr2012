@@ -1,4 +1,4 @@
-function [features, lables] = getSSVMClassifierFeatures(bndinfo, combinedFeatures)
+function [features, lables] = getSSVMClassifierFeatures(bndinfo, combinedFeatures, type)
 % X is the raw data
 % ind is the set of indices for which the edgeFeatures should be computed
 %
@@ -12,9 +12,12 @@ function [features, lables] = getSSVMClassifierFeatures(bndinfo, combinedFeature
 %      7-8:  Convexity (area and ratio) - not used
 %        9:  Chain length
 
+boundarylabs = [];
 
-boundarylabs =  bndinfo.edges.boundaryType;
-boundarylabs = (boundarylabs(1:end/2)>0) + 2*(boundarylabs(end/2+1:end)>0);
+if type == 'train'
+    boundarylabs =  bndinfo.edges.boundaryType;
+    boundarylabs = (boundarylabs(1:end/2)>0) + 2*(boundarylabs(end/2+1:end)>0);
+end
 
 ind = (1:bndinfo.ne);
 edgeFeatures = getEdgeFeatures(bndinfo, combinedFeatures.edgeInfo, ind);
@@ -22,7 +25,7 @@ edgeFeatures = getEdgeFeatures(bndinfo, combinedFeatures.edgeInfo, ind);
 TJInfos =  combinedFeatures.TJInfo;
 TJnum = numel(TJInfos);
 
-features = zeros([TJnum * 3, 100], 'single');
+features = zeros([TJnum * 3, 48], 'single');
 lables = zeros([TJnum * 3, 1], 'single');
 
 for k = 1:TJnum
@@ -31,17 +34,26 @@ for k = 1:TJnum
 
     tjinfo = TJInfos{k};
 
+    % T junction id, 1-dimension
     features(row, col) = k;
     col = col + 1;
 
+    % Angle, 2-dimension
     features(row, col : col + 1) = cell2mat(tjinfo.angles);
     col = col + 2;
 
+    % convexity feature, 36-dimension
     features(row, col : col + 35) = cell2mat(tjinfo.edgeConvexityFeature);
     col = col + 36;
 
-%     features(row, col : col + 8) = edgeFeatures(tjinfo.edgeId, 1 : 9);
+    %  Hoiem et al. [7] proposes local features fd(e), 9-dimension 
+    eIds = cell2mat(tjinfo.edgeId);
+    features(row, col : col + 8) = edgeFeatures(eIds, 1 : 9);
     col = col + 9;
+    % disp(col);
+    if size(boundarylabs) ~= 0
+        
+    end
 end
 
 
