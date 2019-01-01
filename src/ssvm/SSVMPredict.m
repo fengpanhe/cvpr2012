@@ -1,4 +1,4 @@
-function predictFilePath = predictSSVM(testFilePath, modelFilePath)
+function predictFilePath = SSVMpredict(testFilePath, modelFilePath)
 %predictSSVM - Description
 %
 % Syntax: predictionFilePath = predictSSVM(input)

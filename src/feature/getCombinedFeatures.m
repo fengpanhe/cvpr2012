@@ -75,11 +75,11 @@ for k = 1:size(jPos, 1)
 end
 
 % edge feature info
-X = getFeatures(bndinfo, im, bndinfo.pbim, bndinfo.gconf);
+edgeFeatures = getEdgeFeatures(bndinfo, bndinfo.pbim);
 
 combinedFeatures.TJInfo = Tjinfo;
 combinedFeatures.TJnum = size(Tjinfo, 1);
-combinedFeatures.edgeInfo = X.edge;
+combinedFeatures.edgeInfo = edgeFeatures;
 
 
 
