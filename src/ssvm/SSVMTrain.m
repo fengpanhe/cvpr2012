@@ -4,17 +4,18 @@ function modelFilePath = SSVMTrain(X, Y)
 % Syntax: modelFilePath = trainSSVM(X, Y)
 %
 % Long description
-    trainFile = 'result/tmp/ssvmtrainfile.txt';
+    trainFile = 'result/tmp/ssvmtrainfile.dat';
     
-    formatStr = '%d qid:%d';
+    formatStr = '%f qid:%f';
     for index = 1:(size(X, 2) - 1)
-        formatStr = formatStr + ' ' + string(index) + ':%f'; 
+        formatStr = sprintf('%s %d:%s', formatStr, index, '%f'); 
     end
-    formatStr = formatStr + '\n';
+    formatStr = [formatStr '\n'];
 
-    trainf = fopen(trainFile，'w');
-    for index = 1:numel(X)
-        fprintf(trainf, formatStr, [Y, X]);
+    trainf = fopen(trainFile, 'w');
+    YX = double([Y, X]);
+    for index = 1:size(YX, 1)
+        fprintf(trainf, formatStr, YX(1, :));
     end
     fclose(trainf);
     
