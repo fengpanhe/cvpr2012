@@ -12,23 +12,23 @@ function res = gcdSSVMTrainTest()
     if exist(ssvmXYFile, 'file')
         load(ssvmXYFile);
     else
-        [X, Y] = gcd2ssvmXY(fileList);
-        save(ssvmXYFile, 'X', 'Y');
+        [X, Y, infos] = gcd2ssvmXY(fileList);
+        save(ssvmXYFile, 'X', 'Y', 'infos');
     end
 
     dateGroupNum = size(X, 1) / 3;
-    mid = ceil(dateGroupNum * 2 / 3);
-    randomOrder = randperm(dateGroupNum);
-    trainDateIndex = randomOrder(1:mid);
-    testDateIndex = randomOrder(mid:end);
+    mid = ceil(dateGroupNum * 2 / 3) * 3;
+    % randomOrder = randperm(dateGroupNum);
+    trainDateIndex = 1:dateGroupNum * 3;
+    testDateIndex = mid + 1:dateGroupNum * 3;
 
-    trainDateIndex = trainDateIndex * 3;
-    trainDateIndex = [trainDateIndex, trainDateIndex - 1, trainDateIndex - 2]
-    trainDateIndex = sort(trainDateIndex);
+    % trainDateIndex = trainDateIndex * 3;
+    % trainDateIndex = [trainDateIndex, trainDateIndex - 1, trainDateIndex - 2]
+    % trainDateIndex = sort(trainDateIndex);
 
-    testDateIndex = testDateIndex * 3;
-    testDateIndex = [testDateIndex, testDateIndex - 1, testDateIndex - 2]
-    testDateIndex = sort(testDateIndex);
+    % testDateIndex = testDateIndex * 3;
+    % testDateIndex = [testDateIndex, testDateIndex - 1, testDateIndex - 2]
+    % testDateIndex = sort(testDateIndex);
 
     modelFilePath = SSVMTrain(X(trainDateIndex, :), Y(trainDateIndex, :));
     predictScore = SSVMPredict(X(testDateIndex, :), Y(testDateIndex, :), modelFilePath);

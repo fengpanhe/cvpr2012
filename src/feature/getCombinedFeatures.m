@@ -1,3 +1,15 @@
+%{
+% Filename: getCombinedFeatures.m
+% Project: feature
+% Created Date: Tuesday January 15th 2019
+% Author: Feng Panhe
+% -----
+% Last Modified:
+% Modified By:
+% -----
+% Copyright (c) 2019 Feng Panhe
+%}
+
 function combinedFeatures = getCombinedFeatures(bndinfo, im)
     %%
     imsize = bndinfo.imsize;

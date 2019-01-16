@@ -1,16 +1,24 @@
-function [features, lables] = getSSVMClassifierFeatures(bndinfo, combinedFeatures, type)
+function itemInfos = getSSVMClassifierFeatures(bndinfo, combinedFeatures, type)
     % X is the raw data
     % ind is the set of indices for which the edgeFeatures should be computed
     %
-    % edgeFeatures:
-    %   Edge edgeFeatures (1-6)
-    %        1:  Pb
-    %        2:  Length / Perimeter
-    %        3:  Smoothness
-    %        4:  Angle
-    %      5-6:  Continuity
-    %      7-8:  Convexity (area and ratio) - not used
-    %        9:  Chain length
+    % infos:
+    %   +1: Lable
+    %   +1: Edge id
+    %   +1: T junction id (group id)
+    %
+    %   +2: Angles
+    %   +36: Convexity feature
+    %
+    %   +1: Pb
+    %   +1: Length / Perimeter
+    %   +1: Smoothness
+    %   +1: Angle
+    %   +2: Continuity
+    %   +2: Convexity (area and ratio) - not used
+    %   +1: Chain length
+    %
+
 
     boundarylabs = [];
 
@@ -33,6 +41,10 @@ function [features, lables] = getSSVMClassifierFeatures(bndinfo, combinedFeature
         row = k * 3 - 2:k * 3;
 
         tjinfo = TJInfos{k};
+
+        % Edge id
+        features(row, col) = cell2mat(tjinfo.edgeId);
+        col = col + 1;
 
         % T junction id, 1-dimension
         features(row, col) = k;
@@ -87,11 +99,21 @@ function [features, lables] = getSSVMClassifierFeatures(bndinfo, combinedFeature
         end
 
     end
-
+    itemInfos = [features, lables];
 end
 
 function edgeFeatures = getEdgeFeatures(bndinfo, edgeInfo, ind)
     %% Edge Features
+    % edgeFeatures:
+    %   Edge edgeFeatures (1-6)
+    %        1:  Pb
+    %        2:  Length / Perimeter
+    %        3:  Smoothness
+    %        4:  Angle
+    %      5-6:  Continuity
+    %      7-8:  Convexity (area and ratio) - not used
+    %        9:  Chain length
+
     ndata = numel(ind);
 
     edgeFeatures = zeros([ndata 9], 'single');
