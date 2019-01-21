@@ -23,6 +23,7 @@ function [X, Y, infos] = gcd2ssvmXY(matFileNameList)
         imFile = [gcdImPath, imNameList{index}, '.jpg'];
         pbimFile = [gcdPbimPath, imNameList{index}, '_pbim.mat'];
 
+        
         if ~exist(matFile, 'file')
             error('File \"%s\" does not exist.', matFile);
         end
@@ -48,11 +49,11 @@ function [X, Y, infos] = gcd2ssvmXY(matFileNameList)
 
         itemInfos = getSSVMClassifierFeatures(bndinfo2, combinedFeatures, 'train');
 
-        lables = itemInfos(1);
-        edgeIds = itemInfos(2);
-        features = itemInfos(3:);
+        lables = itemInfos(:,1);
+        edgeIds = itemInfos(:,2);
+        features = itemInfos(:,3:end);
 
-        edgeIds(:, end + 1) = index;
+%         edgeIds(:, end + 1) = index;
 
         if size(X, 1) > 0
             features(:, 1) = features(:, 1) + X(end, 1);
@@ -60,6 +61,9 @@ function [X, Y, infos] = gcd2ssvmXY(matFileNameList)
 
         X = [X; features];
         Y = [Y; lables];
+        edgeIds(:, end + 1) = index;
         infos = [infos; edgeIds];
     end
+    
+    infos(:,[1,2]) = infos(:,[2,1])
 end

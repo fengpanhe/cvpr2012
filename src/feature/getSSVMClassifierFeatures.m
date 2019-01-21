@@ -33,7 +33,7 @@ function itemInfos = getSSVMClassifierFeatures(bndinfo, combinedFeatures, type)
     TJInfos = combinedFeatures.TJInfo;
     TJnum = numel(TJInfos);
 
-    features = zeros([TJnum * 3, 48], 'single');
+    features = zeros([TJnum * 3, 49], 'single');
     lables = zeros([TJnum * 3, 1], 'single');
 
     for k = 1:TJnum
@@ -99,7 +99,7 @@ function itemInfos = getSSVMClassifierFeatures(bndinfo, combinedFeatures, type)
         end
 
     end
-    itemInfos = [features, lables];
+    itemInfos = [lables, features];
 end
 
 function edgeFeatures = getEdgeFeatures(bndinfo, edgeInfo, ind)
