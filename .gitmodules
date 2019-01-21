@@ -1,3 +1,6 @@
 [submodule "lib/svm-struct-matlab"]
 	path = lib/svm-struct-matlab
 	url = git@github.com:microhe/svm-struct-matlab.git
+[submodule "lib/TRW-S"]
+	path = lib/TRW-S
+	url = git@github.com:microhe/TRW-S.git
