@@ -37,7 +37,7 @@ function res = gcdSSVMTrainTest()
     precision1 = calcPrecision(X(testDateIndex, 1), Y(testDateIndex, 1), predictScore);
 
     mrfMatrix = [infos(testDateIndex, :), X(testDateIndex, 1), predictScore];
-    mrfMatrix = MRFEnergy_mex(2, double(mrfMatrix), size(mrfMatrix))
+    mrfMatrix = MRFEnergy_mex(21, double(mrfMatrix), size(mrfMatrix))
     predictScore = mrfMatrix(:, 4);
 
     res = [X(testDateIndex, 1), Y(testDateIndex, 1), predictScore];
