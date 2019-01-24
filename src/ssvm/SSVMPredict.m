@@ -29,7 +29,7 @@ function predictScore = SSVMPredict(X, Y, modelFile)
     fprintf(testf, formatStr, transpose([Y, X]));
     fclose(testf);
 
-    cmd = [ssvmpredict ' ' testFile ' ' modelFile ' ' predictFile];
+    cmd = sprintf("%s %s %s %s", ssvmpredict, testFile, modelFile, predictFile);
     disp(cmd);
     system(cmd);
 

@@ -11,7 +11,7 @@ function res = gcdSSVMTrainTest()
     ssvmXYFile = 'result/tmp/ssvmXY.mat';
 
     if exist(ssvmXYFile, 'file')
-        load(ssvmXYFile);
+        load(ssvmXYFile, 'X', 'Y', 'infos');
     else
         [X, Y, infos] = gcd2ssvmXY(fileList);
         save(ssvmXYFile, 'X', 'Y', 'infos');
