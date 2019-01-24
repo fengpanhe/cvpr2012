@@ -8,12 +8,30 @@ function res = gcdSSVMTrainTest()
     fileList = dir(fullfile(gcdGtPath, '*_gt.mat'));
     fileList = {fileList.name};
 
+    file_name_list = strtok(fileList, '_');
+
     ssvmXYFile = 'result/tmp/ssvmXY.mat';
 
     if exist(ssvmXYFile, 'file')
         load(ssvmXYFile, 'X', 'Y', 'infos');
     else
-        [X, Y, infos] = gcd2ssvmXY(fileList);
+        X = [];
+        Y = [];
+        infos = [];
+
+        for i = 1:numel(file_name_list)
+            [X_, Y_, infos_] = gcd2ssvmXY(file_name_list{i});
+
+            if size(X, 1) > 0
+                X_(:, 1) = X_(:, 1) + X(end, 1);
+            end
+
+            X = [X; X_];
+            Y = [Y; Y_];
+            infos_(:, end + 1) = i;
+            infos = [infos; infos_];
+        end
+        infos(:, [2, 1]) = infos(:, [1, 2]);
         save(ssvmXYFile, 'X', 'Y', 'infos');
     end
 
