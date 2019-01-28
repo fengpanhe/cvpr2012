@@ -11,12 +11,13 @@ function bndinfo = gcdGtPredict(image_name, model_file_path)
         error('File %s does not exist.', gt_bndinfo_file);
     end
 
-    [X, Y, infos] = gcd2ssvmXY({sprintf('%s%s', image_name, '_gt.mat')});
+    [X, Y, infos] = gcd2ssvmXY(image_name);
     load(gt_bndinfo_file, 'bndinfo');
 
     predict_score = SSVMPredict(X, Y, model_file_path);
 
-    mrf_matrix = [infos, X(:, 1), predict_score];
+    image_id = zeros(size(infos, 1), 1);
+    mrf_matrix = [image_id, infos, X(:, 1), predict_score];
     mrf_matrix = MRFEnergy_mex(21, double(mrf_matrix), size(mrf_matrix));
 
     predict_score = mrf_matrix(:, 4);

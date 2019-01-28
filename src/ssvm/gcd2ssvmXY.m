@@ -10,7 +10,7 @@
 %Copyright (c) 2019 Feng Panhe
 %}
 
-function [X, Y, infos] = gcd2ssvmXY(file_name)
+function [X, Y, infos, bndinfo2] = gcd2ssvmXY(file_name)
     %gcd2ssvmXY - 从gcd数据集生成ssvm的 X Y 形式的数组
     %
     % Syntax: [X, Y] = gcd2ssvmXY(mat_fileNameList)

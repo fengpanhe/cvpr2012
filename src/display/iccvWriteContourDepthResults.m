@@ -65,7 +65,7 @@ function iccvWriteContourDepthResults(file_name_list, ex_bndinfo_dir_path, gt_bn
             lab = (lab(1:end / 2) > 0) + 2 * (lab(end / 2 + 1:end) > 0);
             printOcclusionResult(rgb2gray(im), bndinfo2, lab, out_name, 1);
         else
-            error('File \"%s\" does not exist.', ex_bndinfo_file)
+            error('File \"%s\" does not exist.', gt_bndinfo_file);
         end
 
         if ex_draw
@@ -78,7 +78,7 @@ function iccvWriteContourDepthResults(file_name_list, ex_bndinfo_dir_path, gt_bn
                 out_name = fullfile(dest_dir_path, [file_name '_ex.jpg']);
                 printOcclusionResult(im, bndinfo, lab, out_name, 1);
             else
-                error('File \"%s\" does not exist.', ex_bndinfo_file)
+                error('File \"%s\" does not exist.', ex_bndinfo_file);
             end
 
         end
