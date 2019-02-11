@@ -16,7 +16,7 @@ function iccvWriteContourDepthResults(file_name_list, ex_bndinfo_dir_path, gt_bn
     % Syntax:  iccvWriteContourDepthResults(fileNameList)
     %
     % 是 11年iccv的 iccvWriteContourDepthResults 的修改。
-    % 加入了面的深度显示，颜色越深，面越深。
+    % 加入了面的深度显示，深色在前，数字小。
     %
     % Inputs:
     %   file_name_list: The names of some pictures to be drawn

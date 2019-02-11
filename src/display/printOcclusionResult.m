@@ -20,5 +20,6 @@ function printOcclusionResult(im, bndinfo, lab, fn, fignum)
     displayOcclusionResult(im, bndinfo, objlab, lab, fignum);
     set(gcf, 'PaperPositionMode', 'auto');
     %print(['-f' num2str(fignum)], '-djpeg99', fn);
-    print(['-f' num2str(fignum)], '-depsc2', [fn(1:end - 4) '.eps']);
+    % print(['-f' num2str(fignum)], '-depsc2', [fn(1:end - 4) '.eps']);
+    print(['-f' num2str(fignum)], '-djpeg', [fn(1:end - 4) '.jpg']);
 end
