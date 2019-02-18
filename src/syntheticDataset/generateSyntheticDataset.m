@@ -31,13 +31,7 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
 
     image_size = [1200, 800];
 
-    % set(0, 'DefaultFigureVisible', 'off');
-
-    tmp_x = [];
-    tmp_y = [];
-
-    edges_position = {};
-    junctions_position = [];
+    set(0, 'DefaultFigureVisible', 'off');
 
     for i = 1:image_num
         %% 生成 imgae_num 个 image 和 对应的 gt.mat
@@ -45,6 +39,9 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
         im_name = sprintf('sd%d', i);
         im_file = fullfile(im_dir_path, strcat(im_name, '.jpg'));
         gt_file = fullfile(im_dir_path, strcat(im_name, '_gt.mat'));
+
+        edges_position = {};
+        junctions_position = [0, 0];
 
         % 设置画布大小。plot 标定画布的角点，可避免坐标系自动调整
         figure('Color', 'w', 'Position', [0, 0, image_size]);
@@ -85,91 +82,56 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
                     new_edge_position = edgeSegmentedByShape(edge_x, edge_y, shape_x, shape_y);
 
                     edges_position{edge_i} = new_edge_position{1};
-
-                    for new_edge_i = 2:numel(new_edge_position)
-                        edges_position{end + 1} = new_edge_position{new_edge_i};
-                    end
+                    edges_position = [edges_position, new_edge_position{2:end}];
 
                     shape_junctions_x = [shape_junctions_x; junctions_x];
                     shape_junctions_y = [shape_junctions_y; junctions_y];
                     shape_junctions_ii = [shape_junctions_ii; ii(:, 1)];
                 else
-                    % 无交点
                     [edge_points_in, ~] = inpolygon(edge_x, edge_y, shape_x, shape_y);
 
                     if edge_points_in
-                        % edge 的所有点都在 shape 内部，shape 覆盖 edge
+                        % edge 的所有点都在 shape 内部，记录被覆盖的边
                         edges_position_remove_indexs(end + 1) = edge_i;
                     end
 
                 end
 
             end
+
             edges_position(edges_position_remove_indexs) = [];
 
             % shape 的边加入
             if numel(shape_junctions_x) > 0
                 new_edge_position = shapeEdgeSegmentedByPoints(shape_x, shape_y, shape_junctions_x, shape_junctions_y, shape_junctions_ii);
-
-                for new_edge_i = 1:numel(new_edge_position)
-                    edges_position{end + 1} = new_edge_position{new_edge_i};
-                end
-
+                edges_position = [edges_position, new_edge_position];
             else
                 edges_position{end + 1} = [shape_x, shape_y];
             end
 
-            % edges_position{end + 1} = [shape_x, shape_y];
+            % 删除被覆盖的 junction
+            if numel(junctions_position) ~= 0
+                [junction_in, ~] = inpolygon(junctions_position(:, 1), junctions_position(:, 2), shape_x, shape_y);
+                junctions_position(junction_in, :) = [];
+            end
 
-            % mapshow([0, 0, 1200, 1200], [0, 800, 0, 800], 'DisplayType', 'point', 'Marker', 'x');
-            tmp_x = [tmp_x; shape_x];
-            tmp_y = [tmp_y; shape_y];
-        end
+            % 加入新的 junction
+            junctions_position = [junctions_position; [shape_junctions_x, shape_junctions_y]];
+        end % 画出图形的处理 end
 
         for ii = 1:numel(edges_position)
             hold on;
-            plot(edges_position{ii}(:, 1), edges_position{ii}(:, 2), 'r', 'LineWidth', 4);
+            plot(edges_position{ii}(:, 1), edges_position{ii}(:, 2), 'b', 'LineWidth', 2);
         end
 
-        % mapshow(junctions_position(:, 1), junctions_position(:, 2), 'DisplayType', 'point', 'Marker', 'o');
+        mapshow(junctions_position(:, 1), junctions_position(:, 2), 'DisplayType', 'point', 'Marker', 'o');
+
         axis off;
         print('-dpng', '-r0', [im_file(1:end - 4) '.png']);
-        % f = getframe(gca);
-        % imwrite(f.cdata, [im_file(1:end - 4) '.png']);
         close all;
     end
 
     set(0, 'DefaultFigureVisible', 'on');
-
-    % image_size([1, 2]) = image_size([2, 1]);
-    % iptsetpref('ImshowBorder', 'tight');
-    % mag = min(640 / max(image_size) * 100, 100);
-    % iptsetpref('ImshowInitialMagnification', mag)
-    % figure(1),
-    imshow('/run/media/he/data/Experiment/cvpr2012/resources/SyntheticDataset/images/sd1.png');
-    axis('on');
-    xlabel('x');
-    ylabel('y');
-    hold on;
-    tmp_y = -(tmp_y - image_size(2));
-    plot(tmp_x, tmp_y, 'o');
-    % x1 = [100, 80, 1200];
-    % y1 = [400, 300, 100];
-    % x2 = [20, 20, 1200];
-    % y2 = [40, 80, 600];
-    % x1box = [100, 80, 1200, 100];
-    % y1box = [400, 300, 100, 400];
-    % x2box = [20, 20, 1200, 20];
-    % y2box = [40, 80, 600, 40];
-    % figure('Color', 'w', 'Position', [0, 0, image_size]);
-    % set(gca, 'position', [0 0 1 1])
-    % patch(x2, y2, 'green')
-    % patch(x1, y1, 'green')
-    % [xi, yi] = polyxpoly(x1box, y1box, x2box, y2box);
-    % mapshow(xi, yi, 'DisplayType', 'point', 'Marker', 'o');
-    % axis off;
-    % %box off;
-    % print(['-f' num2str(1)], '-djpeg', [im_file(1:end - 4) '.jpg']);
 
 end
 
