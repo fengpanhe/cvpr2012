@@ -27,13 +27,14 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
     gt_dir_path = fullfile(dest_dir_path, 'gtsave');
     im_dir_path = fullfile(dest_dir_path, 'images');
 
-    max_shape_num = 10;
+    min_shape_num = 5;
+    max_shape_num = 1;
 
     image_size = [1200, 800];
     wseg_matix_indices = (1:(image_size(1) * image_size(2)))';
     [wseg_matix_pos_x, wseg_matix_pos_y] = ind2sub(image_size, wseg_matix_indices);
 
-    % set(0, 'DefaultFigureVisible', 'off');
+    set(0, 'DefaultFigureVisible', 'off');
 
     for i = 1:image_num
         %% 生成 imgae_num 个 image 和 对应的 gt.mat
@@ -43,8 +44,9 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
         gt_file = fullfile(gt_dir_path, strcat(im_name, '_gt.mat'));
 
         edges_position = {};
-        junctions_position = [0, 0];
+        junctions_position = [];
         wseg_matix = zeros(image_size);
+        edges_spLR = [];
 
         % 设置画布大小。plot 标定画布的角点，可避免坐标系自动调整
         figure('Color', 'w', 'Position', [0, 0, image_size]);
@@ -53,8 +55,8 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
         hold on;
         plot([0, 0, image_size(1), image_size(1)], [0, image_size(2), 0, image_size(2)], '.');
 
-        shape_num = randi(max_shape_num);
-        wseg_matix(:) = shape_num;
+        shape_num = randi(max_shape_num) + min_shape_num;
+        wseg_matix(:) = shape_num + 1;
 
         for j = 1:shape_num
             %% 画出 shape_num 个随机图形
@@ -74,15 +76,19 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
             % 将 shape 的点的连接顺寻改为顺时针
 
             if shape_x(2) == shape_x(1)
+
                 if shape_x(3) > shape_x(1)
                     shape_x = flip(shape_x);
                     shape_y = flip(shape_y);
                 end
+
             elseif shape_y(2) == shape_y(1)
+
                 if shape_y(3) < shape_y(1)
                     shape_x = flip(shape_x);
                     shape_y = flip(shape_y);
                 end
+
             else
                 slope = (shape_y(2) - shape_y(1)) / (shape_x(2) - shape_x(1));
                 aa = (shape_x(3) - shape_x(1)) / (shape_x(2) - shape_x(1)) - (shape_y(3) - shape_y(1)) / (shape_y(2) - shape_y(1));
@@ -94,8 +100,7 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
 
             end
 
-            [wseg_matix_pos_in, ~] = inpolygon(wseg_matix_pos_x, wseg_matix_pos_y, shape_x, shape_y);
-            wseg_matix(wseg_matix_pos_in) = shape_num - j;
+            shape_face_index = shape_num - j + 1;
 
             edges_num = numel(edges_position);
             edges_position_remove_indexs = [];
@@ -114,7 +119,11 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
                     new_edge_position = edgeSegmentedByShape(edge_x, edge_y, shape_x, shape_y, junctions_x, junctions_y, ii);
 
                     edges_position{edge_i} = new_edge_position{1};
-                    edges_position = [edges_position, new_edge_position{2:end}];
+                    edges_position = cat(2, edges_position, new_edge_position{2:end});
+                    new_edges_spLR = zeros(numel(new_edge_position) - 1, 2);
+                    new_edges_spLR(:, 1) = edges_spLR(edge_i, 1);
+                    new_edges_spLR(:, 2) = edges_spLR(edge_i, 2);
+                    edges_spLR = cat(1, edges_spLR, new_edges_spLR);
 
                     shape_junctions_x = [shape_junctions_x; junctions_x];
                     shape_junctions_y = [shape_junctions_y; junctions_y];
@@ -132,14 +141,31 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
             end
 
             edges_position(edges_position_remove_indexs) = [];
+            edges_spLR(edges_position_remove_indexs, :) = [];
 
             % shape 的边加入
             if numel(shape_junctions_x) > 0
                 new_edge_position = shapeEdgeSegmentedByPoints(shape_x, shape_y, shape_junctions_x, shape_junctions_y, shape_junctions_ii);
-                edges_position = [edges_position, new_edge_position];
             else
-                edges_position{end + 1} = [shape_x, shape_y];
+                new_edge_position = {[shape_x, shape_y]};
             end
+
+            edges_position = cat(2, edges_position, new_edge_position);
+
+            % edges_spLR
+            new_edges_spLR = zeros(numel(new_edge_position), 2);
+            new_edges_spLR(:, 2) = shape_face_index;
+
+            for new_edge_i = 1:numel(new_edge_position)
+                new_edge_pos = new_edge_position{new_edge_i};
+                point_xy = round(new_edge_pos(round(end / 2), :));
+                new_edges_spLR(new_edge_i, 1) = wseg_matix(point_xy(1), point_xy(2));
+            end
+
+            edges_spLR = cat(1, edges_spLR, new_edges_spLR);
+            % wseg_matix
+            [wseg_matix_pos_in, ~] = inpolygon(wseg_matix_pos_x, wseg_matix_pos_y, shape_x, shape_y);
+            wseg_matix(wseg_matix_pos_in) = shape_face_index;
 
             % 删除被覆盖的 junction
             if numel(junctions_position) ~= 0
@@ -148,34 +174,90 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
             end
 
             % 加入新的 junction
-            junctions_position = [junctions_position; [shape_junctions_x, shape_junctions_y]];
+            junctions_position = cat(1, junctions_position, [shape_junctions_x, shape_junctions_y]);
         end % 画出图形的处理 end
 
-        % bndinfo.edges.junctions 边的两个端点在 junctions_position 中的 位置
-        junctions_position(1, :) = [];
-
+        %% bndinfo.edges.junctions 的值，边的两个端点在 junctions_position 中的 位置
         bndinfo_edges_junctions = zeros(numel(edges_position), 2);
 
         for edge_i = 1:numel(edges_position)
             edge_start_xy = edges_position{edge_i}(1, [1, 2]);
             edge_end_xy = edges_position{edge_i}(end, [1, 2]);
             [~, Locb] = ismember([edge_start_xy; edge_end_xy], junctions_position, 'rows');
-            bndinfo_edges_junctions(edge_i, [1, 2]) = Locb;
+
+            if Locb
+                bndinfo_edges_junctions(edge_i, [1, 2]) = Locb;
+            else
+                junctions_position(end + 1, :) = edge_start_xy;
+                bndinfo_edges_junctions(edge_i, [1, 2]) = size(junctions_position, 1);
+            end
+
         end
 
-        % bndinfo.edges.boundaryType  的值
+        %% bndinfo.edges.boundaryType 的值
         edges_boundary_type = zeros(numel(edges_position) * 2, 1);
         edges_boundary_type(1:end / 2) = 1;
 
+        %% edges.adjacency 的值，见 lib/iccv2011/src/processBoundaryInfo.m 的112行
+        % get 1) junctions adjacent to each edglet
+        %     2) junction adjacency in form of [directedEdglet nextJunction]
+        ne = numel(edges_position);
+        nj = size(junctions_position, 1);
+        jadj = cell(nj, 1);
+
+        for k = 1:ne
+            jadj{bndinfo_edges_junctions(k, 1)}(end + 1, 1) = k; % forward  ejunctions
+            jadj{bndinfo_edges_junctions(k, 2)}(end + 1, 1) = k; % reverse
+        end
+
+        % get directed edglet adjacency
+        eadj = cell(ne * 2, 1);
+
+        for k = 1:ne
+            % forward edge: assign adjecent edges (+ne if adj edge is reverse)
+            j = bndinfo_edges_junctions(k, 2);
+            eadj{k} = jadj{j}(:); % remove current edge   jadj
+            eadj{k}(eadj{k} == k) = [];
+            %eadj{k} = setdiff(jadj{j}(:, 1), k);
+            reverseind = (bndinfo_edges_junctions(eadj{k}, 2) == j); % reverse if meet at 2nd junction
+            eadj{k}(reverseind) = ne + eadj{k}(reverseind);
+            % backward edge: assign adjecent edges (+ne if adj edge is reverse)
+            j = bndinfo_edges_junctions(k, 1);
+            eadj{k + ne} = jadj{j}(:); % remove current edge
+            eadj{k + ne}(eadj{k + ne} == k) = [];
+            %eadj{k+ne} = setdiff(jadj{j}(:, 1), k);
+            reverseind = (bndinfo_edges_junctions(eadj{k + ne}, 2) == j); % reverse if meet at 2nd junction first
+            eadj{k + ne}(reverseind) = ne + eadj{k + ne}(reverseind);
+        end
+
+        %% bndinfo.edges.thetaDirected 和 bndinfo.edges.thetaUndirected ，见 lib/iccv2011/src/processBoundaryInfo.m 的145行
+        etheta2 = zeros(ne, 1); % directed orientation
+        etheta = zeros(ne, 1); % undirected orientation
+
+        for k = 1:ne
+
+            jx = junctions_position(bndinfo_edges_junctions(k, :), 1);
+            jy = junctions_position(bndinfo_edges_junctions(k, :), 2);
+            etheta2(k) = atan2(-(jy(2) - jy(1)), jx(2) - jx(1));
+            etheta(k) = mod(etheta2(k) + pi / 2, pi) - pi / 2;
+            if etheta(k) == -pi / 2, etheta(k) = pi / 2; end
+
+        end
+
         bndinfo.edges.indices = posCell2indCell(image_size, edges_position);
-        bndinfo.edges.junctions = bndinfo_edges_junctions;
-        bndinfo.edges.boundaryType = edges_boundary_type; 
+        bndinfo.edges.junctions = uint32(bndinfo_edges_junctions);
+        bndinfo.edges.adjacency = eadj;
+        bndinfo.edges.spLR = uint16(edges_spLR);
+        bndinfo.edges.thetaDirected = etheta2;
+        bndinfo.edges.thetaUndirected = etheta;
+        bndinfo.edges.boundaryType = edges_boundary_type;
         bndinfo.imname = strcat(im_name, '.png');
         bndinfo.imsize = image_size([2, 1]);
         bndinfo.junctions.position = round([junctions_position(:, 1), junctions_position(:, 2)]);
         bndinfo.ne = numel(edges_position);
         bndinfo.nj = size(junctions_position, 1);
-        bndinfo.wseg = transpose(wseg_matix);
+        bndinfo.nseg = max(max(wseg_matix));
+        bndinfo.wseg = uint16(transpose(wseg_matix));
         save(gt_file, 'bndinfo');
 
         % for ii = 1:numel(edges_position)
@@ -186,7 +268,7 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
         % hold on;
         % mapshow(junctions_position(:, 1), junctions_position(:, 2), 'DisplayType', 'point', 'Marker', 'o');
 
-        % axis off;
+        axis off;
         % print('-dpng', '-r0', [im_file(1:end - 4) '.png']);
         print('-djpeg', '-r0', [im_file(1:end - 4) '.jpg']);
         % close all;
