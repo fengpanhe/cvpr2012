@@ -284,13 +284,45 @@ function ind_cell = posCell2indCell(xy_szie, pos_cell)
     % Syntax: ind_cell = posCell2indCell(xy_szie, pos_cell)
     %
     % Long description
+
     yx_size = xy_szie([2, 1]);
     ind_cell = cell(size(pos_cell));
 
     for i = 1:numel(pos_cell)
         pos_x = round(pos_cell{i}(:, 1));
         pos_y = round(pos_cell{i}(:, 2));
-        ind_cell{i} = sub2ind(yx_size, pos_y, pos_x);
+
+        pos_x2 = [];
+        pos_y2 = [];
+
+        for j = 1:size(pos_x) - 1
+            endpoint_x = [pos_x(j), pos_x(j + 1)];
+            endpoint_y = [pos_y(j), pos_y(j + 1)];
+            x_diff = abs(endpoint_x(2) - endpoint_x(1));
+            y_diff = abs(endpoint_y(2) - endpoint_y(1));
+
+            if x_diff >= y_diff
+
+                if endpoint_x(1) < endpoint_x(2)
+                    line_x = endpoint_x(1):endpoint_x(2);
+                else
+                    line_x = flip(endpoint_x(2):endpoint_x(1));
+                end
+                line_y = (line_x - endpoint_x(1)) * (endpoint_y(2) - endpoint_y(1)) / (endpoint_x(2) - endpoint_x(1)) + endpoint_y(1);
+            else
+                if endpoint_y(1) < endpoint_y(2)
+                    line_y = endpoint_y(1):endpoint_y(2);
+                else
+                    line_y = flip(endpoint_y(2):endpoint_y(1));
+                end
+                line_x = (line_y - endpoint_y(1)) * (endpoint_x(2) - endpoint_x(1)) / (endpoint_y(2) - endpoint_y(1)) + endpoint_x(1);
+            end
+
+            pos_x2 = cat(1, pos_x2, line_x');
+            pos_y2 = cat(1, pos_y2, line_y');
+        end
+
+        ind_cell{i} = sub2ind(yx_size, round(pos_y2), round(pos_x2));
     end
 
 end
