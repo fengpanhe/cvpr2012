@@ -45,7 +45,7 @@ function combinedFeatures = getCombinedFeatures(bndinfo, im)
                 edgeFlip(k1, 1) = 1;
             end
 
-            dv = clacDirectionVector(edgeXY);
+            dv = clacDirectionVector(edgeXY(1:2,:));
             ecf = getEdgeConvexityFeature(edgeXY);
 
             edgeId(k1, 1) = i;
