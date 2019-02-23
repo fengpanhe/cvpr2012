@@ -28,7 +28,7 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
     im_dir_path = fullfile(dest_dir_path, 'images');
 
     min_shape_num = 5;
-    max_shape_num = 1;
+    max_shape_num = 10;
 
     image_size = [1200, 800];
     wseg_matix_indices = (1:(image_size(1) * image_size(2)))';
@@ -112,6 +112,16 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
                 % edges_position 中的每条边与 shape 进行判断
                 edge_x = edges_position{edge_i}(:, 1);
                 edge_y = edges_position{edge_i}(:, 2);
+
+                [edge_points_in, ~] = inpolygon(edge_x, edge_y, shape_x, shape_y);
+
+                if edge_points_in
+                    % 此边被覆盖, 记录并跳过
+                    % edge 的所有点都在 shape 内部或边缘，此边被覆盖，edges_position_remove_indexs 记录被覆盖的边的位置
+                    edges_position_remove_indexs(end + 1) = edge_i;
+                    continue;
+                end
+
                 [junctions_x, junctions_y, ii] = polyxpoly(shape_x, shape_y, edge_x, edge_y);
 
                 if numel(junctions_x) > 0
@@ -128,14 +138,6 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
                     shape_junctions_x = [shape_junctions_x; junctions_x];
                     shape_junctions_y = [shape_junctions_y; junctions_y];
                     shape_junctions_ii = [shape_junctions_ii; ii(:, 1)];
-                else
-                    [edge_points_in, ~] = inpolygon(edge_x, edge_y, shape_x, shape_y);
-
-                    if edge_points_in
-                        % edge 的所有点都在 shape 内部，记录被覆盖的边
-                        edges_position_remove_indexs(end + 1) = edge_i;
-                    end
-
                 end
 
             end
@@ -283,7 +285,9 @@ function ind_cell = posCell2indCell(xy_szie, pos_cell)
     %
     % Syntax: ind_cell = posCell2indCell(xy_szie, pos_cell)
     %
-    % Long description
+    % pos_cell 中点的坐标系: y 轴向下为正向, x 轴向右为正向
+    % 在两点之间插入点，使边更连续
+    % 将 sub 坐标转为 ind 坐标
 
     yx_size = xy_szie([2, 1]);
     ind_cell = cell(size(pos_cell));
@@ -295,32 +299,45 @@ function ind_cell = posCell2indCell(xy_szie, pos_cell)
         pos_x2 = [];
         pos_y2 = [];
 
-        for j = 1:size(pos_x) - 1
+        for j = 1:numel(pos_x) - 1
             endpoint_x = [pos_x(j), pos_x(j + 1)];
             endpoint_y = [pos_y(j), pos_y(j + 1)];
             x_diff = abs(endpoint_x(2) - endpoint_x(1));
             y_diff = abs(endpoint_y(2) - endpoint_y(1));
 
+            if x_diff < 2 && y_diff < 2
+                % 线段中间没有可插入的点，跳过
+                pos_x2(end + 1, 1) = endpoint_x(1);
+                pos_y2(end + 1, 1) = endpoint_y(1);
+                continue;
+            end
+
             if x_diff >= y_diff
 
                 if endpoint_x(1) < endpoint_x(2)
-                    line_x = endpoint_x(1):endpoint_x(2);
+                    line_x = endpoint_x(1):endpoint_x(2) - 1;
                 else
-                    line_x = flip(endpoint_x(2):endpoint_x(1));
+                    line_x = flip(endpoint_x(2):endpoint_x(1) - 1);
                 end
+
                 line_y = (line_x - endpoint_x(1)) * (endpoint_y(2) - endpoint_y(1)) / (endpoint_x(2) - endpoint_x(1)) + endpoint_y(1);
             else
+
                 if endpoint_y(1) < endpoint_y(2)
-                    line_y = endpoint_y(1):endpoint_y(2);
+                    line_y = endpoint_y(1):endpoint_y(2) - 1;
                 else
-                    line_y = flip(endpoint_y(2):endpoint_y(1));
+                    line_y = flip(endpoint_y(2):endpoint_y(1) - 1);
                 end
+
                 line_x = (line_y - endpoint_y(1)) * (endpoint_x(2) - endpoint_x(1)) / (endpoint_y(2) - endpoint_y(1)) + endpoint_x(1);
             end
 
             pos_x2 = cat(1, pos_x2, line_x');
             pos_y2 = cat(1, pos_y2, line_y');
         end
+
+        pos_x2(end + 1, 1) = pos_x(end);
+        pos_y2(end + 1, 1) = pos_y(end);
 
         ind_cell{i} = sub2ind(yx_size, round(pos_y2), round(pos_x2));
     end
@@ -490,7 +507,7 @@ function [shape_x, shape_y] = drawOneRandomTriangle(x_range, y_range, shape_colo
 end
 
 function [shape_x, shape_y] = drawOneRandomRectangle(x_range, y_range, shape_color)
-    %drawOneRandomRectangle - Description
+    %drawOneRandomRectangle - 画出一个凸四边形，边长最大为对应坐标的范围差值
     %
     % Syntax:  drawOneRandomRectangle(x_range, y_range, shape_color)
     %
@@ -498,8 +515,8 @@ function [shape_x, shape_y] = drawOneRandomRectangle(x_range, y_range, shape_col
     shape_x = zeros(5, 1);
     shape_y = zeros(5, 1);
 
-    x_edge_length = randi(x_range(2) - x_range(1));
-    y_edge_length = randi(y_range(2) - y_range(1));
+    x_edge_length = round(randi(x_range(2) - x_range(1)) / 2);
+    y_edge_length = round(randi(y_range(2) - y_range(1)) / 2);
 
     shape_x(1) = randi(x_range(2) - x_range(1) - x_edge_length) + x_range(1);
     shape_y(1) = randi(y_range(2) - y_range(1) - y_edge_length) + y_range(1);
