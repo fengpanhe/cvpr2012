@@ -26,6 +26,19 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
 
     gt_dir_path = fullfile(dest_dir_path, 'gtsave');
     im_dir_path = fullfile(dest_dir_path, 'images');
+    pbim_dir_path = fullfile(dest_dir_path, 'pbim');
+
+    if ~exist(gt_dir_path, 'dir')
+        mkdir(gt_dir_path);
+    end
+
+    if ~exist(im_dir_path, 'dir')
+        mkdir(im_dir_path);
+    end
+
+    if ~exist(pbim_dir_path, 'dir')
+        mkdir(pbim_dir_path);
+    end
 
     min_shape_num = 5;
     max_shape_num = 10;
@@ -42,6 +55,7 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
         im_name = sprintf('sd%d', i);
         im_file = fullfile(im_dir_path, strcat(im_name, '.jpg'));
         gt_file = fullfile(gt_dir_path, strcat(im_name, '_gt.mat'));
+        pbim_file = fullfile(pbim_dir_path, strcat(im_name, '_pbim.mat'));
 
         edges_position = {};
         junctions_position = [];
@@ -198,7 +212,7 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
 
         %% bndinfo.edges.boundaryType 的值
         edges_boundary_type = zeros(numel(edges_position) * 2, 1);
-        edges_boundary_type(1:end / 2) = 1;
+        edges_boundary_type(end / 2 + 1:end) = 1;
 
         %% edges.adjacency 的值，见 lib/iccv2011/src/processBoundaryInfo.m 的112行
         % get 1) junctions adjacent to each edglet
@@ -272,8 +286,11 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
 
         axis off;
         % print('-dpng', '-r0', [im_file(1:end - 4) '.png']);
-        print('-djpeg', '-r0', [im_file(1:end - 4) '.jpg']);
+        print('-djpeg', '-r0', im_file);
         % close all;
+        im = imread(im_file);
+        pbim = pbCGTG_nonmax(double(im) / 255);
+        save(pbim_file, 'pbim');
     end
 
     set(0, 'DefaultFigureVisible', 'on');

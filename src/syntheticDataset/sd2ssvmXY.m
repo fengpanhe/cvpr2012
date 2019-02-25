@@ -10,7 +10,6 @@
 % Copyright (c) 2019 Feng Panhe
 %}
 
-
 function [X, Y, infos, bndinfo] = sd2ssvmXY(file_name, is_new)
     %gcd2ssvmXY - 从gcd数据集生成ssvm的 X Y 形式的数组
     %
@@ -22,9 +21,10 @@ function [X, Y, infos, bndinfo] = sd2ssvmXY(file_name, is_new)
     if ~exist('is_new', 'var') && isempty(is_new)
         is_new = false;
     end
+
     GcdGtPath = 'resources/SyntheticDataset/gtsave/';
     GcdImPath = 'resources/SyntheticDataset/images/';
-    GcdPbimPath = 'result/tmp/pbim/';
+    GcdPbimPath = 'resources/SyntheticDataset/pbim/';
 
     mat_file = strcat(GcdGtPath, file_name, '_gt.mat');
     im_file = strcat(GcdImPath, file_name, '.jpg');
@@ -41,13 +41,14 @@ function [X, Y, infos, bndinfo] = sd2ssvmXY(file_name, is_new)
     im = imread(im_file);
     load(mat_file, 'bndinfo');
 
-    if exist(pbim_file, 'file') && ~is_new
+    if exist(pbim_file, 'file')
         load(pbim_file, 'pbim');
     else
         disp('pb');
         pbim = pbCGTG_nonmax(double(im) / 255);
         save(pbim_file, 'pbim');
     end
+
     bndinfo.pbim = pbim;
 
     combinedFeatures = getCombinedFeatures(bndinfo, im);
