@@ -45,13 +45,17 @@ function combinedFeatures = getCombinedFeatures(bndinfo, im)
                 edgeFlip(k1, 1) = 1;
             end
 
-            dv = clacDirectionVector(edgeXY(1:2,:));
+            dv = clacDirectionVector(edgeXY);
             ecf = getEdgeConvexityFeature(edgeXY);
 
             edgeId(k1, 1) = i;
             % XY(k1, 1)  = edgeXY;
             directionVector(k1, :) = dv;
             edgeConvexityFeature(k1, :) = ecf;
+        end
+
+        if find(isnan(directionVector) == 1)
+            continue;
         end
 
         angle1 = clacVectorsAngle(directionVector(1, :), directionVector(2, :));
@@ -104,13 +108,34 @@ end
 
 function directionVector = clacDirectionVector(pos)
     %% Calculate the direction vector of a set of points
-    X = pos(:, 1);
-    Y = pos(:, 2);
-    p = polyfit(X, Y, 1);
-    vector = [1, p(1)];
+    pos_x = pos(:, 1);
+    pos_y = pos(:, 2);
+    diff_x = pos_x - pos_x(1);
+    diff_y = pos_y - pos_y(1);
+    diff_x_no_zero_indexs = find(diff_x ~= 0);
+    diff_y_no_zero_indexs = find(diff_y ~= 0);
 
-    if mean(X) < X(1)
-        vector = -vector;
+    if ~isempty(diff_x_no_zero_indexs)
+
+        index_tmp = diff_x_no_zero_indexs(1);
+        k = diff_y(index_tmp) / diff_x(index_tmp);
+        vector = [1, k];
+
+        if pos_x(index_tmp) < pos_x(1)
+            vector = -vector;
+        end
+
+    elseif ~isempty(diff_y_no_zero_indexs)
+
+        index_tmp = diff_y_no_zero_indexs(1);
+        vector = [0, 1];
+
+        if diff_y(index_tmp) < 0
+            vector = -vector;
+        end
+
+    else
+        vector = [NaN, NaN];
     end
 
     directionVector = vector / norm(vector);
