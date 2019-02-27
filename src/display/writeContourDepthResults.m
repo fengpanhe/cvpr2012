@@ -36,14 +36,15 @@ function writeContourDepthResults(bndinfo_file, image_file, dest_dir_path, is_ex
     end
 
     [~, image_name, image_ext_name] = fileparts(image_file);
+    [~, bndinfo_name, ~] = fileparts(bndinfo_file);
     im = im2double(imread(image_file));
-
+    im = rgb2gray(im);
     if is_ex
 
         load(bndinfo_file, 'bndinfo');
         lab = bndinfo.edges.boundaryType;
         lab = lab(1:end / 2) + 2 * lab(end / 2 + 1:end);
-        out_name = fullfile(dest_dir_path, strcat(image_name, '_ex', image_ext_name));
+        out_name = fullfile(dest_dir_path, strcat(bndinfo_name, image_ext_name));
         printOcclusionResult(im, bndinfo, lab, out_name, 1);
     else
         load(bndinfo_file, 'bndinfo');

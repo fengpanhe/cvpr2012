@@ -10,7 +10,7 @@ function plotOcclusionBoundaries(bndinfo, blabels)
     hold on
     imsize = bndinfo.imsize;
 
-    color = [1,0,0];
+    color = 'k';
 
     indices = bndinfo.edges.indices;
 
@@ -56,8 +56,8 @@ function plotOcclusionBoundaries(bndinfo, blabels)
                 % plot(ex, ey, 'Color', 1 - color, 'LineWidth', 3);
                 plot(ex, ey, 'Color', color, 'LineWidth', 1);
 
-                annotation('arrow', [asx ax], [asy ay], 'LineStyle', 'none', ...
-                    'HeadWidth', 17, 'HeadLength', 10);
+                annotation('arrow', [asx ax], [asy ay], 'Color', color,'LineStyle', 'none', ...
+                'HeadStyle', 'vback3' ,'HeadWidth', 17, 'HeadLength', 10);
             end
 
         end

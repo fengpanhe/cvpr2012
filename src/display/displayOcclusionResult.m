@@ -26,8 +26,8 @@ function displayOcclusionResult(im, bndinfo, objlab, edgelab, fignum)
     % try close(fignum); catch end;
     iptsetpref('ImshowBorder', 'tight');
     mag = min(640 / max(bndinfo.imsize) * 100, 100);
-    iptsetpref('ImshowInitialMagnification', mag)
-    figure(fignum), imshow(im)
+    % iptsetpref('ImshowInitialMagnification', 200);
+    figure(fignum), imshow(im);
     plotOcclusionBoundaries(bndinfo, edgelab);
     plotTJunctions(bndinfo);
 end
