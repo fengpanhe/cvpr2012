@@ -58,14 +58,6 @@ function combinedFeatures = getCombinedFeatures(bndinfo, im)
             continue;
         end
 
-        angle1 = clacVectorsAngle(directionVector(1, :), directionVector(2, :));
-        angle2 = clacVectorsAngle(directionVector(1, :), directionVector(3, :));
-        angle3 = clacVectorsAngle(directionVector(2, :), directionVector(3, :));
-
-        angles(1, :) = [angle1, angle2];
-        angles(2, :) = [angle1, angle3];
-        angles(3, :) = [angle2, angle3];
-
         % Align three sides clockwise
         atan2ds = atan2d(directionVector(:, 2), directionVector(:, 1));
         clockwiseAngle1_2 = atan2ds(1) - atan2ds(2);
@@ -80,13 +72,21 @@ function combinedFeatures = getCombinedFeatures(bndinfo, im)
             clockwiseAngle1_3 = clockwiseAngle1_3 + 360;
         end
 
-        if clockwiseAngle1_3 < clockwiseAngle1_2
+        if clockwiseAngle1_3 > clockwiseAngle1_2
             edgeId([2, 3], :) = edgeId([3, 2], :);
             edgeFlip([2, 3], :) = edgeFlip([3, 2], :);
             directionVector([2, 3], :) = directionVector([3, 2], :);
-            angles([2, 3], :) = angles([3, 2], :);
+            % angles([2, 3], :) = angles([3, 2], :);
             edgeConvexityFeature([2, 3], :) = edgeConvexityFeature([3, 2], :);
         end
+
+        angle1 = clacVectorsAngle(directionVector(1, :), directionVector(2, :));
+        angle2 = clacVectorsAngle(directionVector(1, :), directionVector(3, :));
+        angle3 = clacVectorsAngle(directionVector(2, :), directionVector(3, :));
+
+        angles(1, :) = [angle1, angle2];
+        angles(2, :) = [angle3, angle1];
+        angles(3, :) = [angle2, angle3];
 
         adjacentEdgeInfo = [];
         adjacentEdgeInfo.edgeId = num2cell(edgeId);
@@ -149,26 +149,9 @@ end
 function ECFeature = getEdgeConvexityFeature(edgeXY)
     %% get the convexity feature of edge
 
-    lb = edgeXY(end, :) - edgeXY(1, :);
-    lb_atan2d = atan2d(lb(2), lb(1));
-
-    thetas = zeros(1, size(edgeXY, 1));
-
-    for i = 2:size(edgeXY, 1)
-        li = edgeXY(i, :) - edgeXY(1, :);
-        li_atan2d = atan2d(li(2), li(1));
-        theta_i2b = li_atan2d - lb_atan2d;
-
-        if theta_i2b > 180
-            theta_i2b = theta_i2b - 360;
-        end
-
-        if theta_i2b <- 180
-            theta_i2b = theta_i2b + 360;
-        end
-
-        thetas(i) = theta_i2b;
-    end
+    thetas = atan2d(-(edgeXY(:,2) - edgeXY(1,2)), edgeXY(:,1) - edgeXY(1,1));
+    thetas = thetas - thetas(1);
+    thetas = mod(thetas + 180, 360) - 180;
 
     edges = [-180, -170, -160, -150, -140, -130, -120, -110, -100, -90, -80, -70, -60, -50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180];
 
