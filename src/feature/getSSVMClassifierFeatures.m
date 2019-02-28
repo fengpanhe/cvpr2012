@@ -75,24 +75,12 @@ function itemInfos = getSSVMClassifierFeatures(bndinfo, combinedFeatures, type)
             end
 
             evalues = zeros([3, 1], 'single');
-            evalues(2) = evalues(1) + (elabs(1) == 2) * 3 + (elabs(1) == 1) * (-3);
-            evalues(3) = evalues(2) + (elabs(2) == 2) * 2 + (elabs(2) == 1) * (-2);
-            evalues(1) = evalues(3) + (elabs(3) == 2) * 1 + (elabs(3) == 1) * (-1);
-
-            max_value = max(evalues);
-            min_value = min(evalues);
-
-            for k = 1:numel(evalues)
-
-                if evalues(k) == max_value
-                    evalues(k) = 3;
-                elseif evalues(k) == min_value
-                    evalues(k) = 1;
-                else
-                    evalues(k) = 2;
-                end
-
-            end
+            lab_tmp = [elabs(3), elabs(1)];
+            evalues(1) = all(lab_tmp == [2, 1]) * 3 + all(lab_tmp == [1, 1]) * 2 + all(lab_tmp == [2, 2]) * 2 + all(lab_tmp == [1, 2]) * 1;
+            lab_tmp = [elabs(1), elabs(2)];
+            evalues(2) = all(lab_tmp == [2, 1]) * 3 + all(lab_tmp == [1, 1]) * 2 + all(lab_tmp == [2, 2]) * 2 + all(lab_tmp == [1, 2]) * 1;
+            lab_tmp = [elabs(2), elabs(3)];
+            evalues(3) = all(lab_tmp == [2, 1]) * 3 + all(lab_tmp == [1, 1]) * 2 + all(lab_tmp == [2, 2]) * 2 + all(lab_tmp == [1, 2]) * 1;
 
             lables(row, 1) = evalues;
         end
