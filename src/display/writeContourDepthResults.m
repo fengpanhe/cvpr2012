@@ -59,7 +59,7 @@ function writeContourDepthResults(bndinfo_file, image_file, dest_dir_path, is_ex
 
         lab = bndinfo2.edges.boundaryType;
         lab = (lab(1:end / 2) > 0) + 2 * (lab(end / 2 + 1:end) > 0);
-        printOcclusionResult(rgb2gray(im), bndinfo2, lab, out_name, 1);
+        printOcclusionResult(im, bndinfo2, lab, out_name, 1);
     end
 
 end
