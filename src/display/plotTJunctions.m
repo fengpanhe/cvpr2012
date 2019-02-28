@@ -23,6 +23,7 @@ function plotTJunctions(bndinfo)
     edge_endpoint_indexs = bndinfo.edges.junctions;
     mapshow(j_pos(:, 1), j_pos(:, 2), 'Color', 'b', 'DisplayType', 'point', 'Marker', 'o');
 
+    tj_i = 1;
     for i = 1:size(j_pos, 1)
         e_num = numel(find(edge_endpoint_indexs == i));
 
@@ -45,10 +46,24 @@ function plotTJunctions(bndinfo)
             % a = annotation('ellipse',dim);
             ann_x = [abs(j_pos(i, 1) - 50), j_pos(i, 1)] / im_size(2);
             ann_y = 1 - [abs(j_pos(i, 2) - 50), j_pos(i, 2)] / im_size(1);
-            a = annotation('textarrow', ann_x, ann_y, 'HeadStyle', 'vback3', 'String', num2str(i));
+            a = annotation('textarrow', ann_x, ann_y, 'HeadStyle', 'vback3', 'String', num2str(tj_i));
             a.Color = 'red';
+            tj_i = tj_i + 1;
         end
 
+    end
+
+    indices = bndinfo.edges.indices;
+    for k = 1:numel(indices)
+        ind = double(indices{k});
+        [ey, ex] = ind2sub(bndinfo.imsize(1:2), ind);
+        index = round(numel(ey) / 2);
+        ann_x = [ex(index) - 50, ex(index)] / im_size(2);
+        ann_x(1) = max(ann_x(1), 0);
+        ann_y = 1 - [ey(index) + 50, ey(index)] / im_size(1);
+        ann_y(1) = max(ann_y(1), 0);
+        a = annotation('textarrow', ann_x, ann_y, 'HeadStyle', 'vback3', 'String', num2str(k));
+        a.Color = 'b';
     end
 
 end
