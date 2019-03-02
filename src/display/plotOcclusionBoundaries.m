@@ -52,10 +52,11 @@ function plotOcclusionBoundaries(bndinfo, blabels)
                 %[asx, asy] = dsxy2figxy(gca, asx, asy);
                 ax = (ax - 1) / (imsize(2) - 1); ay = 1 - (ay - 1) / (imsize(1) - 1);
                 asx = (asx - 1) / (imsize(2) - 1); asy = 1 - (asy - 1) / (imsize(1) - 1);
+                ax = max(ax, 0);
+                asx = max(asx, 0);
 
                 % plot(ex, ey, 'Color', 1 - color, 'LineWidth', 3);
                 plot(ex, ey, 'Color', color, 'LineWidth', 1);
-
                 annotation('arrow', [asx ax], [asy ay], 'Color', color,'LineStyle', 'none', ...
                 'HeadStyle', 'vback3' ,'HeadWidth', 17, 'HeadLength', 10);
             end
