@@ -1,9 +1,13 @@
-function [ssvm_precision, mrf_precision, ssvm_tj_errata, mrf_tj_errata] = TJTest(model_file, dataset_path, image_name)
+function [ssvm_precision, mrf_precision, ssvm_predict_score, mrf_predict_score, ssvm_tj_errata, mrf_tj_errata] = TJTest(model_file, dataset_path, image_name, off_plot)
     %TJTest - Description
     %
     % Syntax: output = TJTest(input)
     %
     % Long description
+
+    if ~exist('off_plot', 'var') || isempty(off_plot)
+        off_plot = false;
+    end
 
     if ~exist(model_file, 'file')
         error('File \"%s\" does not exist.', model_file);
@@ -66,10 +70,14 @@ function [ssvm_precision, mrf_precision, ssvm_tj_errata, mrf_tj_errata] = TJTest
 
     save(gt_file, 'bndinfo');
 
-    poltTJTestResult(bndinfo, ssvm_predict_score);
+    if ~off_plot
+        fprintf('正在画图片 %s 的 TJ...\n', image_name);
+        plotTJTestResult(bndinfo, ssvm_predict_score);
+    end
+
 end
 
-function poltTJTestResult(bndinfo, predict_score)
+function plotTJTestResult(bndinfo, predict_score)
     %poltTJTestResult - Description
     %
     % Syntax: output = poltTJTestResult(bndinfo, tj_errata)
@@ -116,14 +124,16 @@ function poltTJTestResult(bndinfo, predict_score)
         predict_lab(1) = 1 + xor(predict_score(ps_i) < predict_score(ps_i + 1), tj_edge_flip(1));
         predict_lab(2) = 1 + xor(predict_score(ps_i + 1) < predict_score(ps_i + 2), tj_edge_flip(2));
         predict_lab(3) = 1 + xor(predict_score(ps_i + 2) < predict_score(ps_i), tj_edge_flip(3));
-        poltOneTJ(edges_xy(tj_edge_id, :), predict_lab, 'r', image_size);
-        poltOneTJ(edges_xy(tj_edge_id, :), edges_lab(tj_edge_id), 'b', image_size);
+        plotOneTJ(edges_xy(tj_edge_id, :), predict_lab, 'r', image_size);
+        plotOneTJ(edges_xy(tj_edge_id, :), edges_lab(tj_edge_id), 'b', image_size);
         save_file_name = strcat(image_name, '_tj', num2str(tj_i), '.jpg');
+
         if all(predict_lab == edges_lab(tj_edge_id))
             save_file_name = strcat('correct_', save_file_name);
         else
             save_file_name = strcat('incorrect_', save_file_name);
         end
+
         print('-djpeg', '-r0', fullfile(image_save_dir, save_file_name));
         hold off;
         close all;
@@ -132,7 +142,7 @@ function poltTJTestResult(bndinfo, predict_score)
     set(0, 'DefaultFigureVisible', 'on');
 end
 
-function poltOneTJ(edges_xy, edges_lab, ann_color, image_size)
+function plotOneTJ(edges_xy, edges_lab, ann_color, image_size)
     %poltOneTJ - Description
     %
     % Syntax: output = poltOneTJ(edges, labs, edge_color)
