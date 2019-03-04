@@ -1,9 +1,18 @@
-function modelFilePath = SSVMTrain(X, Y)
+function modelFilePath = SSVMTrain(X, Y, ssvm_model_file_path, ssvmlean_param)
     %trainSSVM - Description
     %
     % Syntax: modelFilePath = trainSSVM(X, Y)
     %
     % Long description
+
+    if ~exist('ssvmlean_param', 'var') || isempty(ssvmlean_param)
+        ssvmlean_param = '-c 20.0';
+    end
+
+    if ~exist('ssvm_model_file_path', 'var') || isempty(ssvm_model_file_path)
+        ssvm_model_file_path = fullfile('resources', 'SSVMmodel', 'ssvm.model');
+    end
+
     trainFile = 'result/tmp/ssvmtrainfile.txt';
 
     formatStr = '%d qid:%d';
@@ -18,8 +27,8 @@ function modelFilePath = SSVMTrain(X, Y)
     fprintf(trainf, formatStr, transpose([Y, X]));
     fclose(trainf);
 
-    ssvmlearn = 'lib/svm_rank/build/svm_rank_learn -c 1';
-    modelFilePath = 'resources/SSVMmodel/ssvm.model';
+    ssvmlearn = strcat('lib/svm_rank/build/svm_rank_learn -c', ssvmlean_param);
+    modelFilePath = ssvm_model_file_path;
     cmd = [ssvmlearn ' ' trainFile ' ' modelFilePath];
     fprintf('Start training...\n');
     disp(cmd);
