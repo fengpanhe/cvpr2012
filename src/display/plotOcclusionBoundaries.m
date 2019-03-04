@@ -50,8 +50,10 @@ function plotOcclusionBoundaries(bndinfo, blabels)
 
                 %[ax,ay] = dsxy2figxy(gca, ax, ay);
                 %[asx, asy] = dsxy2figxy(gca, asx, asy);
-                ax = (ax - 1) / (imsize(2) - 1); ay = 1 - (ay - 1) / (imsize(1) - 1);
-                asx = (asx - 1) / (imsize(2) - 1); asy = 1 - (asy - 1) / (imsize(1) - 1);
+                ax = (ax - 1) / (imsize(2) - 1); 
+                ay = 1 - (ay - 1) / (imsize(1) - 1);
+                asx = (asx - 1) / (imsize(2) - 1); 
+                asy = 1 - (asy - 1) / (imsize(1) - 1);
                 ax = max(ax, 0);
                 asx = max(asx, 0);
 
