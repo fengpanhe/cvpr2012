@@ -3,7 +3,8 @@ function [ssvm_precision, mrf_precision, ssvm_predict_score, mrf_predict_score, 
     %
     % Syntax: output = TJTest(input)
     %
-    % Long description
+    % example:
+    % [ssvm_precision, mrf_precision] = TJTest('resources/SSVMmodel/ssvm.model', 'resources/SyntheticDataset', 'sd10', 1);
 
     if ~exist('off_plot', 'var') || isempty(off_plot)
         off_plot = false;
@@ -57,15 +58,16 @@ function [ssvm_precision, mrf_precision, ssvm_predict_score, mrf_predict_score, 
     ssvm_predict_score = SSVMPredict(X, Y, model_file);
 
     image_id = zeros(numel(edge_id), 1);
-
+    [ssvm_precision, ssvm_tj_errata] = calcTJPrecision(X(:, 1), Y(:, 1), ssvm_predict_score);
+    
     % mrf 优化
-    penalty = max(ssvm_predict_score) * 1;
-    mrfMatrix = [image_id, edge_id, X, ssvm_predict_score];
+    penalty = 6;
+    mrfMatrix = [image_id, edge_id, X(:, 1), ssvm_predict_score];
     mrfMatrix = MRFEnergy_mex(penalty, double(mrfMatrix), size(mrfMatrix));
     mrf_predict_score = mrfMatrix(:, 4);
 
     % 结果处理
-    [ssvm_precision, ssvm_tj_errata] = calcTJPrecision(X(:, 1), Y(:, 1), ssvm_predict_score);
+    
     [mrf_precision, mrf_tj_errata] = calcTJPrecision(X(:, 1), Y(:, 1), mrf_predict_score);
 
     save(gt_file, 'bndinfo');
