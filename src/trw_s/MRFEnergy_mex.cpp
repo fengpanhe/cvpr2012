@@ -112,22 +112,6 @@ class MexFunction : public matlab::mex::Function {
         }
         delete[] tjs;
         outputs[0] = std::move(inMatrix);
-
-        // infoMatrix = new double*[row_num + 1];
-        // for (int i = 0; i < row_num; i++) {
-        //     infoMatrix[i] = new double[col_num + 1];
-        // }
-
-        // for (int i = 0; i < row_num; i++) {
-        //     for (int j = 0; j < col_num; j++) {
-        //         infoMatrix[i][j] = inMatrix[i][j];
-        //     }
-        // }
-        // this->minimize_use_TRWS();
-        // for (int i = 0; i < row_num; i++) {
-        //     delete[] infoMatrix[i];
-        // }
-        // delete[] infoMatrix;
     }
     void use_TRWS(int im_start_index, int im_end_index)
     {
@@ -137,17 +121,16 @@ class MexFunction : public matlab::mex::Function {
         TypePotts2::REAL energy, lowerBound;
 
         const int nodeNum = im_end_index - im_start_index + 1; // number of nodes
-        const int K = 6; // number of labels
-        TypePotts2::REAL D[K];
-        TypePotts2::REAL V[K * K];
-        int x, y, z, k;
+        const int label_num = 6; // number of labels
+        TypePotts2::REAL D[label_num];
+        TypePotts2::REAL V[label_num * label_num];
 
-        mrf = new MRFEnergy<TypePotts2>(TypePotts2::GlobalSize(K), DefaultErrorFn);
+        mrf = new MRFEnergy<TypePotts2>(TypePotts2::GlobalSize(label_num), DefaultErrorFn);
         nodes = new MRFEnergy<TypePotts2>::NodeId[nodeNum];
 
         // construct energy
         for (int i = 0; i < nodeNum; i++) {
-            for (int l = 0; l < k; l++) {
+            for (int l = 0; l < label_num; l++) {
                 D[l] = dCost(im_start_index + i, l);
             }
             nodes[i] = mrf->AddNode(TypePotts2::LocalSize(), TypePotts2::NodeData(D));
@@ -161,9 +144,9 @@ class MexFunction : public matlab::mex::Function {
                 pix2 = im_start_index + j;
                 if (existSameEdge(pix1, pix2)) {
 
-                    for (int m = 0; m < K; m++) {
-                        for (int n = 0; n < K; n++) {
-                            V[m * k + n] = fnCost(pix1, pix2, m, n);
+                    for (int m = 0; m < label_num; m++) {
+                        for (int n = 0; n < label_num; n++) {
+                            V[m * label_num + n] = fnCost(pix1, pix2, m, n);
                         }
                     }
                     mrf->AddEdge(nodes[i], nodes[j], TypePotts2::EdgeData(V));
@@ -171,21 +154,10 @@ class MexFunction : public matlab::mex::Function {
             }
         }
 
-        // TypePotts2::REAL aa[36] = { 0, 0.1, 0, 0, 0, 0, 0.1 };
-        // mrf->AddEdge(nodes[0], nodes[2], TypePotts2::EdgeData(aa));
-        // mrf->AddEdge(nodes[0], nodes[1], TypePotts2::EdgeData(aa));
-        //     mrf->AddEdge(nodes[0], nodes[1], TypePotts2::EdgeData(2));
-        //     mrf->AddEdge(nodes[3], nodes[0], TypePotts2::EdgeData(aa));
-        // mrf->AddEdge(nodes[0], nodes[3], TypePotts2::EdgeData(aa));
-        //     printf("%s\n", "hello");
-        // Function below is optional - it may help if, for example, nodes are added in a random order
-        // mrf->SetAutomaticOrdering();
-
-        options.m_iterMax = 30; // maximum number of iterations
+        // options.m_iterMax = 300; // maximum number of iterations
         mrf->Minimize_TRW_S(options, lowerBound, energy);
 
         // read solution
-        x = mrf->GetSolution(nodes[0]);
         for (int i = 0; i < nodeNum; i++) {
 
             switch (mrf->GetSolution(nodes[i])) {
@@ -263,49 +235,6 @@ class MexFunction : public matlab::mex::Function {
         // Clear stream buffer
         stream.str("");
     }
-
-    // void minimize_use_TRWS(sizeX, sizeY, numLabels, energy)
-    // {
-    //     MRF* mrf;
-    //     EnergyFunction* energy;
-    //     MRF::EnergyVal E;
-    //     double lowerBound;
-    //     float t, tot_t;
-    //     int iter;
-
-    //     energy = generate_DataFUNCTION_SmoothGENERAL_FUNCTION();
-
-    //     // printf("\n*******Started TRW-S *****\n");
-    //     stream << "\n*******Started TRW-S *****\n";
-    //     this.displayOnMATLAB(stream);
-
-    //     mrf = new TRWS(sizeX, sizeY, numLabels, energy);
-
-    //     // can disable caching of values of general smoothness function:
-    //     // mrf->dontCacheSmoothnessCosts();
-
-    //     mrf->initialize();
-    //     mrf->clearAnswer();
-
-    //     E = mrf->totalEnergy();
-    //     printf("Energy at the Start= %g (%g,%g)\n", (float)E,
-    //         (float)mrf->smoothnessEnergy(), (float)mrf->dataEnergy());
-
-    //     tot_t = 0;
-    //     for (iter = 0; iter < 10; iter++) {
-    //         mrf->optimize(10, t);
-
-    //         E = mrf->totalEnergy();
-    //         lowerBound = mrf->lowerBound();
-    //         tot_t = tot_t + t;
-    //         printf("energy = %g, lower bound = %f (%f secs)\n", (float)E,
-    //             lowerBound, tot_t);
-    //     }
-    //     for (int pix = 0; pix < sizeX * sizeY; pix++)
-    //         printf("Label of pixel %d is %d", pix, mrf->getLabel(pix));
-
-    //     delete mrf;
-    // }
 
 private:
     // Pointer to MATLAB engine to call fprintf
