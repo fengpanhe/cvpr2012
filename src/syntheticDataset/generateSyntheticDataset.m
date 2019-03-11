@@ -174,7 +174,11 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
 
             for new_edge_i = 1:numel(new_edge_position)
                 new_edge_pos = new_edge_position{new_edge_i};
-                point_xy = round(new_edge_pos(round(end / 2), :));
+                if size(new_edge_pos, 1) > 2
+                    point_xy = round(new_edge_pos(round(end / 2), :));
+                else
+                    point_xy = round( (new_edge_pos(1, :) + new_edge_pos(end, :)) / 2 );
+                end
                 new_edges_spLR(new_edge_i, 1) = wseg_matix(point_xy(1), point_xy(2));
             end
 
