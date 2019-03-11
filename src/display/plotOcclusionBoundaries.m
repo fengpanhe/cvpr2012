@@ -10,7 +10,7 @@ function plotOcclusionBoundaries(bndinfo, blabels)
     hold on
     imsize = bndinfo.imsize;
 
-    color = 'k';
+    color = 'g';
 
     indices = bndinfo.edges.indices;
 
