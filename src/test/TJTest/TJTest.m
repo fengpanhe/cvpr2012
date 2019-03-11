@@ -14,33 +14,11 @@ function [ssvm_precision, mrf_precision, ssvm_predict_score, mrf_predict_score, 
         error('File \"%s\" does not exist.', model_file);
     end
 
-    pbim_dir_path = fullfile(dataset_path, 'pbim');
-
-    if ~exist(pbim_dir_path, 'dir')
-        mkdir(pbim_dir_path);
-    end
-
-    gt_file = fullfile(dataset_path, 'gtsave', strcat(image_name, '_gt.mat'));
-    image_file = fullfile(dataset_path, 'images', strcat(image_name, '.jpg'));
-    pbim_file = fullfile(dataset_path, 'pbim', strcat(image_name, '_pbim.mat'));
-
-    if ~exist(gt_file, 'file')
-        error('File \"%s\" does not exist.', gt_file);
-    end
-
-    if ~exist(image_file, 'file')
-        error('File \"%s\" does not exist.', image_file);
-    end
+    [gt_file, image_file, pbim_file] = getDatasetInfoFile(dataset_path, image_name);
 
     image_f = imread(image_file);
     load(gt_file, 'bndinfo');
-
-    if ~exist(pbim_file, 'file')
-        pbim = pbCGTG_nonmax(double(image_f) / 255);
-        save(pbim_file, 'pbim');
-    else
-        load(pbim_file, 'pbim');
-    end
+    load(pbim_file, 'pbim');
 
     bndinfo.pbim = pbim;
 
@@ -59,15 +37,43 @@ function [ssvm_precision, mrf_precision, ssvm_predict_score, mrf_predict_score, 
 
     image_id = zeros(numel(edge_id), 1);
     [ssvm_precision, ssvm_tj_errata] = calcTJPrecision(X(:, 1), Y(:, 1), ssvm_predict_score);
-    
+
     % mrf 优化
-    penalty = 6;
+    penalty = 20;
     mrfMatrix = [image_id, edge_id, X(:, 1), ssvm_predict_score];
     mrfMatrix = MRFEnergy_mex(penalty, double(mrfMatrix), size(mrfMatrix));
     mrf_predict_score = mrfMatrix(:, 4);
 
+    % 有向图
+    seg_num = max(max(bndinfo.wseg));
+    tj_infos = bndinfo.combined_features.TJInfo;
+    tj_num = bndinfo.combined_features.TJnum;
+    edges_spLR = bndinfo.edges.spLR;
+    edges_segid = [];
+    adjacency_matrix = zeros(seg_num);
+    for tj_i = 1:tj_num
+        tj_edge_id = cell2mat(tj_infos{tj_i}.edgeId);
+        tj_edge_flip = logical(cell2mat(tj_infos{tj_i}.edgeFlip));
+        tj_edge_spLR = edges_spLR(tj_edge_id, :);
+        tj_edge_segid = zeros(3, 1);
+        tj_edge_segid(1) =  tj_edge_spLR(1, 1 + tj_edge_flip(1));
+        tj_edge_segid(2) =  tj_edge_spLR(2, 1 + tj_edge_flip(2));
+        tj_edge_segid(3) =  tj_edge_spLR(3, 1 + tj_edge_flip(3));
+        edges_segid = [edges_segid; tj_edge_segid];
+        index_tmp = tj_i * 3;
+        tj_edge_score = mrf_predict_score(index_tmp - 2 : index_tmp, 1);
+        segid_score = [tj_edge_segid, tj_edge_score];
+        segid_score = sortrows(segid_score, 2);
+        adjacency_matrix(segid_score(3,1), segid_score(2,1)) = adjacency_matrix(segid_score(3,1), segid_score(2,1)) + segid_score(3,2) - segid_score(2,2);
+        adjacency_matrix(segid_score(3,1), segid_score(1,1)) = adjacency_matrix(segid_score(3,1), segid_score(1,1)) + segid_score(3,2) - segid_score(1,2);
+        adjacency_matrix(segid_score(2,1), segid_score(1,1)) = adjacency_matrix(segid_score(2,1), segid_score(1,1)) + segid_score(2,2) - segid_score(1,2);
+    end
+    G = digraph(adjacency_matrix);
+    plot(G,'Layout','force','EdgeLabel',G.Edges.Weight);
+
+
     % 结果处理
-    
+
     [mrf_precision, mrf_tj_errata] = calcTJPrecision(X(:, 1), Y(:, 1), mrf_predict_score);
 
     save(gt_file, 'bndinfo');
