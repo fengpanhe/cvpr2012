@@ -15,7 +15,7 @@
 
 using matlab::mex::ArgumentList;
 using namespace matlab::data;
-#include "../../lib/TRW-S/MRFEnergy.h"
+#include "./typePotts2.h"
 #include <stdio.h>
 
 void DefaultErrorFn(char* msg)
