@@ -58,4 +58,6 @@ function [X, Y, infos, bndinfo] = sd2ssvmXY(file_name, is_new)
     Y = itemInfos(:, 1);
     infos = itemInfos(:, 2);
     X = itemInfos(:, 3:end);
+
+    bndinfo.combinedFeatures = combinedFeatures;
 end

@@ -20,7 +20,6 @@ function combinedFeatures = getCombinedFeatures(bndinfo, im)
 
     %% T junction feature info
     Tjinfo = {};
-
     for k = 1:size(jPos, 1)
         adjacentEdgeIndexs = find(ejunction == k);
 
@@ -89,7 +88,6 @@ function combinedFeatures = getCombinedFeatures(bndinfo, im)
         adjacentEdgeInfo.edgeId = num2cell(edgeId);
         adjacentEdgeInfo.edgeFlip = num2cell(edgeFlip);
         adjacentEdgeInfo.edge_segid = num2cell(edge_segid);
-        % adjacentEdgeInfo.XY = num2cell(XY);
         adjacentEdgeInfo.atan2d_value = num2cell(atan2d_value);
         adjacentEdgeInfo.angles = num2cell(angles);
         adjacentEdgeInfo.edgeConvexityFeature = num2cell(edgeConvexityFeature);

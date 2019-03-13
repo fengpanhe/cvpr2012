@@ -9,105 +9,42 @@
 % -----
 % Copyright (c) 2019 Feng Panhe
 %}
-function [precision1, precision2, res1, res2] = sdSSVMTest(modelFilePath, is_new)
+function [ssvm_precision, mrf_precision] = sdSSVMTest(model_file, off_plot)
     %sdSSVMTest - Description
     %
     % Syntax: [precision1, precision2] = sdSSVMTest(input)
     %
     % Long description
-    if ~exist('is_new', 'var') && isempty(is_new)
-        is_new = false;
-    end
 
-    sdGtPath = fullfile('resources', 'SyntheticDataset', 'gtsave');
-    fileList = dir(fullfile(sdGtPath, '*_gt.mat'));
+    dataset_path = fullfile('resources', 'SyntheticDataset');
+    fileList = dir(fullfile(dataset_path, 'gtsave', '*_gt.mat'));
     fileList = {fileList.name};
 
     file_name_list = strtok(fileList, '_');
 
-    ssvmXYFile = 'result/tmp/sd_ssvmXY.mat';
+    tj_num = 0;
+    ssvm_correct_tj_num = 0;
+    mrf_correct_tj_num = 0;
+    ssvm_precision_list = zeros(1, numel(file_name_list));
+    mrf_precision_list = zeros(1, numel(file_name_list));
 
-    if exist(ssvmXYFile, 'file') &&~is_new
-        load(ssvmXYFile, 'X', 'Y', 'infos');
-    else
-        X = [];
-        Y = [];
-        infos = [];
-
-        for i = 1:1
-            [X_, Y_, infos_] = sd2ssvmXY(file_name_list{i}, is_new);
-
-            if size(X, 1) > 0
-                X_(:, 1) = X_(:, 1) + X(end, 1);
-            end
-
-            X = [X; X_];
-            Y = [Y; Y_];
-            infos_(:, end + 1) = i;
-            infos = [infos; infos_];
-        end
-
-        infos(:, [2, 1]) = infos(:, [1, 2]);
-        save(ssvmXYFile, 'X', 'Y', 'infos');
+    for i = 1:numel(file_name_list)
+        disp(file_name_list{i});
+        [ssvm_precision, mrf_precision, ...
+            ssvm_predict_score, mrf_predict_score, ...
+            ssvm_tj_errata, mrf_tj_errata] = ...
+            TJTest(model_file, dataset_path, file_name_list{i}, off_plot);
+        ssvm_precision_list(i) = ssvm_precision;
+        mrf_precision_list(i) = mrf_precision;
+        tj_num = tj_num + numel(ssvm_tj_errata) / 3;
+        ssvm_correct_tj_num = ssvm_correct_tj_num + sum(ssvm_tj_errata) / 3;
+        mrf_correct_tj_num = mrf_correct_tj_num + sum(mrf_tj_errata) / 3;
     end
 
-    disp(file_name_list{1:1});
-    testDateIndex = 1:size(X, 1);
-    predictScore = SSVMPredict(X(testDateIndex, :), Y(testDateIndex, :), modelFilePath);
+    disp(file_name_list);
+    disp(ssvm_precision_list);
+    disp(mrf_precision_list);
+    ssvm_precision = ssvm_correct_tj_num / tj_num;
+    mrf_precision = mrf_correct_tj_num / tj_num;
 
-    res1 = zeros(size(X, 1), 4);
-    res1(:, 1:3) = [X(testDateIndex, 1), infos(:, 2), predictScore];
-    res1(:, 4) = 1;
-    indexs = (1:size(X, 1) / 3) * 3 - 2;
-    tmp_ = res1(indexs, 3) < res1(indexs + 1, 3);
-    res1(indexs(tmp_), 4) = 2;
-    tmp_ = res1(indexs + 1, 3) < res1(indexs + 2, 3);
-    res1(indexs(tmp_) + 1, 4) = 2;
-    tmp_ = res1(indexs + 2, 3) < res1(indexs, 3);
-    res1(indexs(tmp_) + 2, 4) = 2;
-
-    precision1 = calcPrecision(X(testDateIndex, 1), Y(testDateIndex, 1), predictScore);
-
-    mrfMatrix = [infos(testDateIndex, :), X(testDateIndex, 1), predictScore];
-    mrfMatrix = MRFEnergy_mex(21, double(mrfMatrix), size(mrfMatrix));
-    predictScore = mrfMatrix(:, 4);
-
-    res2 = zeros(size(X, 1), 4);
-    res2(:, 1:3) = [X(testDateIndex, 1), infos(:, 2), predictScore];
-    res2(:, 4) = 1;
-    indexs = (1:size(X, 1) / 3) * 3 - 2;
-    tmp_ = res2(indexs, 3) < res2(indexs + 1, 3);
-    res2(indexs(tmp_), 4) = 2;
-    tmp_ = res2(indexs + 1, 3) < res2(indexs + 2, 3);
-    res2(indexs(tmp_) + 1, 4) = 2;
-    tmp_ = res2(indexs + 2, 3) < res2(indexs, 3);
-    res2(indexs(tmp_) + 2, 4) = 2;
-
-    precision2 = calcPrecision(X(testDateIndex, 1), Y(testDateIndex, 1), predictScore);
-
-end
-
-function precision = calcPrecision(tid, label, predictLabel)
-    %myFun - Description
-    %
-    % Syntax: count = myFun(input)
-    %
-    % Long description
-    res = [tid, label, predictLabel];
-    count = 0;
-    groupNum = size(res, 1) / 3;
-    res = sortrows(res, [1, 3]);
-
-    for i = 1:groupNum
-        i3 = i * 3;
-        rows = [i3 - 2; i3 - 1; i3];
-        a = eq([1; 2; 3], res(rows, 2));
-
-        if sum(a) == 3
-            count = count + 1;
-        end
-
-    end
-
-    precision = double(count) / double(groupNum);
 end
