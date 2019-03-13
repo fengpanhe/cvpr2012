@@ -285,11 +285,12 @@ bool existTwoSameSeg(int pix1, int pix2)
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             if (tjs[pix1].seg_ids[i] == tjs[pix2].seg_ids[j]) {
-                same_seg_num ++;
+                same_seg_num++;
             }
         }
     }
-    if(same_seg_num >=2) return true; 
+    if (same_seg_num >= 2)
+        return true;
     return false;
 }
 
@@ -300,77 +301,75 @@ double fnCost(int pix1, int pix2, int label1, int label2)
 
     int seg_id1[3];
     int seg_id2[3];
-    switch (label1)
-    {
-        case LABEL_ABC:
-            seg_id1[0] = tjs[pix1].seg_ids[0];
-            seg_id1[1] = tjs[pix1].seg_ids[1];
-            seg_id1[2] = tjs[pix1].seg_ids[2];
-            break;
-        case LABEL_ACB:
-            seg_id1[0] = tjs[pix1].seg_ids[0];
-            seg_id1[1] = tjs[pix1].seg_ids[2];
-            seg_id1[2] = tjs[pix1].seg_ids[1];
-            break;
-        case LABEL_BAC:
-            seg_id1[0] = tjs[pix1].seg_ids[1];
-            seg_id1[1] = tjs[pix1].seg_ids[0];
-            seg_id1[2] = tjs[pix1].seg_ids[2];
-            break;
-        case LABEL_BCA:
-            seg_id1[0] = tjs[pix1].seg_ids[1];
-            seg_id1[1] = tjs[pix1].seg_ids[2];
-            seg_id1[2] = tjs[pix1].seg_ids[0];
-            break;
-        case LABEL_CAB:
-            seg_id1[0] = tjs[pix1].seg_ids[2];
-            seg_id1[1] = tjs[pix1].seg_ids[0];
-            seg_id1[2] = tjs[pix1].seg_ids[1];
-            break;
-        case LABEL_CBA:
-            seg_id1[0] = tjs[pix1].seg_ids[2];
-            seg_id1[1] = tjs[pix1].seg_ids[1];
-            seg_id1[2] = tjs[pix1].seg_ids[0];
-            break;
-        default:
-            break;
+    switch (label1) {
+    case LABEL_ABC:
+        seg_id1[0] = tjs[pix1].seg_ids[0];
+        seg_id1[1] = tjs[pix1].seg_ids[1];
+        seg_id1[2] = tjs[pix1].seg_ids[2];
+        break;
+    case LABEL_ACB:
+        seg_id1[0] = tjs[pix1].seg_ids[0];
+        seg_id1[1] = tjs[pix1].seg_ids[2];
+        seg_id1[2] = tjs[pix1].seg_ids[1];
+        break;
+    case LABEL_BAC:
+        seg_id1[0] = tjs[pix1].seg_ids[1];
+        seg_id1[1] = tjs[pix1].seg_ids[0];
+        seg_id1[2] = tjs[pix1].seg_ids[2];
+        break;
+    case LABEL_BCA:
+        seg_id1[0] = tjs[pix1].seg_ids[1];
+        seg_id1[1] = tjs[pix1].seg_ids[2];
+        seg_id1[2] = tjs[pix1].seg_ids[0];
+        break;
+    case LABEL_CAB:
+        seg_id1[0] = tjs[pix1].seg_ids[2];
+        seg_id1[1] = tjs[pix1].seg_ids[0];
+        seg_id1[2] = tjs[pix1].seg_ids[1];
+        break;
+    case LABEL_CBA:
+        seg_id1[0] = tjs[pix1].seg_ids[2];
+        seg_id1[1] = tjs[pix1].seg_ids[1];
+        seg_id1[2] = tjs[pix1].seg_ids[0];
+        break;
+    default:
+        break;
     }
-    switch (label2)
-    {
-        case LABEL_ABC:
-            seg_id2[0] = tjs[pix2].seg_ids[0];
-            seg_id2[1] = tjs[pix2].seg_ids[1];
-            seg_id2[2] = tjs[pix2].seg_ids[2];
-            break;
-        case LABEL_ACB:
-            seg_id2[0] = tjs[pix2].seg_ids[0];
-            seg_id2[1] = tjs[pix2].seg_ids[2];
-            seg_id2[2] = tjs[pix2].seg_ids[1];
-            break;
-        case LABEL_BAC:
-            seg_id2[0] = tjs[pix2].seg_ids[1];
-            seg_id2[1] = tjs[pix2].seg_ids[0];
-            seg_id2[2] = tjs[pix2].seg_ids[2];
-            break;
-        case LABEL_BCA:
-            seg_id2[0] = tjs[pix2].seg_ids[1];
-            seg_id2[1] = tjs[pix2].seg_ids[2];
-            seg_id2[2] = tjs[pix2].seg_ids[0];
-            break;
-        case LABEL_CAB:
-            seg_id2[0] = tjs[pix2].seg_ids[2];
-            seg_id2[1] = tjs[pix2].seg_ids[0];
-            seg_id2[2] = tjs[pix2].seg_ids[1];
-            break;
-        case LABEL_CBA:
-            seg_id2[0] = tjs[pix2].seg_ids[2];
-            seg_id2[1] = tjs[pix2].seg_ids[1];
-            seg_id2[2] = tjs[pix2].seg_ids[0];
-            break;
-        default:
-            break;
+    switch (label2) {
+    case LABEL_ABC:
+        seg_id2[0] = tjs[pix2].seg_ids[0];
+        seg_id2[1] = tjs[pix2].seg_ids[1];
+        seg_id2[2] = tjs[pix2].seg_ids[2];
+        break;
+    case LABEL_ACB:
+        seg_id2[0] = tjs[pix2].seg_ids[0];
+        seg_id2[1] = tjs[pix2].seg_ids[2];
+        seg_id2[2] = tjs[pix2].seg_ids[1];
+        break;
+    case LABEL_BAC:
+        seg_id2[0] = tjs[pix2].seg_ids[1];
+        seg_id2[1] = tjs[pix2].seg_ids[0];
+        seg_id2[2] = tjs[pix2].seg_ids[2];
+        break;
+    case LABEL_BCA:
+        seg_id2[0] = tjs[pix2].seg_ids[1];
+        seg_id2[1] = tjs[pix2].seg_ids[2];
+        seg_id2[2] = tjs[pix2].seg_ids[0];
+        break;
+    case LABEL_CAB:
+        seg_id2[0] = tjs[pix2].seg_ids[2];
+        seg_id2[1] = tjs[pix2].seg_ids[0];
+        seg_id2[2] = tjs[pix2].seg_ids[1];
+        break;
+    case LABEL_CBA:
+        seg_id2[0] = tjs[pix2].seg_ids[2];
+        seg_id2[1] = tjs[pix2].seg_ids[1];
+        seg_id2[2] = tjs[pix2].seg_ids[0];
+        break;
+    default:
+        break;
     }
-    int equal_edgeid_index[3] = {-1, -1, -1};
+    int equal_edgeid_index[3] = { -1, -1, -1 };
     int equal_count = 0;
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
@@ -382,20 +381,20 @@ double fnCost(int pix1, int pix2, int label1, int label2)
         }
     }
 
-    if(equal_count == 2){
-        if(equal_edgeid_index[0] == -1 && equal_edgeid_index[1] > equal_edgeid_index[2]){
+    if (equal_count == 2) {
+        if (equal_edgeid_index[0] == -1 && equal_edgeid_index[1] > equal_edgeid_index[2]) {
             answer += penalties;
-        } else if(equal_edgeid_index[1] == -1 && equal_edgeid_index[0] > equal_edgeid_index[2]){
+        } else if (equal_edgeid_index[1] == -1 && equal_edgeid_index[0] > equal_edgeid_index[2]) {
             answer += penalties;
-        } else if(equal_edgeid_index[2] == -1 && equal_edgeid_index[0] > equal_edgeid_index[1]){
-            answer += penalties;   
+        } else if (equal_edgeid_index[2] == -1 && equal_edgeid_index[0] > equal_edgeid_index[1]) {
+            answer += penalties;
         }
-    } else if(equal_count == 3){
-        if(equal_edgeid_index[0] > equal_edgeid_index[1])
+    } else if (equal_count == 3) {
+        if (equal_edgeid_index[0] > equal_edgeid_index[1])
             answer += penalties;
-        if(equal_edgeid_index[0] > equal_edgeid_index[2])
+        if (equal_edgeid_index[0] > equal_edgeid_index[2])
             answer += penalties;
-        if(equal_edgeid_index[1] > equal_edgeid_index[2])
+        if (equal_edgeid_index[1] > equal_edgeid_index[2])
             answer += penalties;
     }
 
