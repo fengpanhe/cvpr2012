@@ -38,39 +38,41 @@ function [ssvm_precision, mrf_precision, ssvm_predict_score, mrf_predict_score, 
     image_id = zeros(numel(edge_id), 1);
     [ssvm_precision, ssvm_tj_errata] = calcTJPrecision(X(:, 1), Y(:, 1), ssvm_predict_score);
 
+    tj_num = bndinfo.combined_features.TJnum;
+    tj_infos = bndinfo.combined_features.TJInfo;
+    edges_segid = [];
+
+    for tj_i = 1:tj_num
+        tj_edge_segid = cell2mat(tj_infos{tj_i}.edge_segid);
+        edges_segid = [edges_segid; tj_edge_segid];
+    end
+
     % mrf 优化
     penalty = 20;
-    mrfMatrix = [image_id, edge_id, X(:, 1), ssvm_predict_score];
+    mrfMatrix = [image_id, edges_segid, X(:, 1), ssvm_predict_score];
     mrfMatrix = MRFEnergy_mex(penalty, double(mrfMatrix), size(mrfMatrix));
     mrf_predict_score = mrfMatrix(:, 4);
 
     % 有向图
     seg_num = max(max(bndinfo.wseg));
-    tj_infos = bndinfo.combined_features.TJInfo;
+
     tj_num = bndinfo.combined_features.TJnum;
-    edges_spLR = bndinfo.edges.spLR;
-    edges_segid = [];
     adjacency_matrix = zeros(seg_num);
+
     for tj_i = 1:tj_num
-        tj_edge_id = cell2mat(tj_infos{tj_i}.edgeId);
-        tj_edge_flip = logical(cell2mat(tj_infos{tj_i}.edgeFlip));
-        tj_edge_spLR = edges_spLR(tj_edge_id, :);
-        tj_edge_segid = zeros(3, 1);
-        tj_edge_segid(1) =  tj_edge_spLR(1, 1 + tj_edge_flip(1));
-        tj_edge_segid(2) =  tj_edge_spLR(2, 1 + tj_edge_flip(2));
-        tj_edge_segid(3) =  tj_edge_spLR(3, 1 + tj_edge_flip(3));
-        edges_segid = [edges_segid; tj_edge_segid];
+        
         index_tmp = tj_i * 3;
-        tj_edge_score = mrf_predict_score(index_tmp - 2 : index_tmp, 1);
+        tj_edge_score = mrf_predict_score(index_tmp - 2:index_tmp, 1);
+        tj_edge_segid = edges_segid(index_tmp - 2:index_tmp, 1);
         segid_score = [tj_edge_segid, tj_edge_score];
         segid_score = sortrows(segid_score, 2);
-        adjacency_matrix(segid_score(3,1), segid_score(2,1)) = adjacency_matrix(segid_score(3,1), segid_score(2,1)) + segid_score(3,2) - segid_score(2,2);
-        adjacency_matrix(segid_score(3,1), segid_score(1,1)) = adjacency_matrix(segid_score(3,1), segid_score(1,1)) + segid_score(3,2) - segid_score(1,2);
-        adjacency_matrix(segid_score(2,1), segid_score(1,1)) = adjacency_matrix(segid_score(2,1), segid_score(1,1)) + segid_score(2,2) - segid_score(1,2);
+        adjacency_matrix(segid_score(3, 1), segid_score(2, 1)) = adjacency_matrix(segid_score(3, 1), segid_score(2, 1)) + segid_score(3, 2) - segid_score(2, 2);
+        adjacency_matrix(segid_score(3, 1), segid_score(1, 1)) = adjacency_matrix(segid_score(3, 1), segid_score(1, 1)) + segid_score(3, 2) - segid_score(1, 2);
+        adjacency_matrix(segid_score(2, 1), segid_score(1, 1)) = adjacency_matrix(segid_score(2, 1), segid_score(1, 1)) + segid_score(2, 2) - segid_score(1, 2);
     end
-    G = digraph(adjacency_matrix);
-    plot(G,'Layout','force','EdgeLabel',G.Edges.Weight);
 
+    G = digraph(adjacency_matrix);
+    plot(G, 'Layout', 'force', 'EdgeLabel', G.Edges.Weight);
 
     % 结果处理
 

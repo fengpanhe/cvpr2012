@@ -16,6 +16,7 @@ function combinedFeatures = getCombinedFeatures(bndinfo, im)
     eindices = bndinfo.edges.indices;
     ejunction = bndinfo.edges.junctions;
     jPos = bndinfo.junctions.position;
+    edges_spLR = bndinfo.edges.spLR;
 
     %% T junction feature info
     Tjinfo = {};
@@ -31,6 +32,7 @@ function combinedFeatures = getCombinedFeatures(bndinfo, im)
         % XY = cell(3, 1)
         edgeId = zeros([3, 1], 'single');
         edgeFlip = zeros([3, 1], 'single');
+        edge_segid = zeros([3,1], 'single');
         atan2d_value = zeros([3, 1], 'single');
         angles = zeros([3, 2], 'single');
         edgeConvexityFeature = zeros([3, 36], 'single');
@@ -43,6 +45,9 @@ function combinedFeatures = getCombinedFeatures(bndinfo, im)
             if j == 2
                 edgeXY = flip(edgeXY);
                 edgeFlip(k1, 1) = 1;
+                edge_segid(k1, 1) = edges_spLR(i, 2);
+            else
+                edge_segid(k1, 1) = edges_spLR(i, 1);
             end
 
             edgeId(k1, 1) = i;
@@ -70,6 +75,7 @@ function combinedFeatures = getCombinedFeatures(bndinfo, im)
         if clockwiseAngle1_3 < clockwiseAngle1_2
             edgeId([2, 3], :) = edgeId([3, 2], :);
             edgeFlip([2, 3], :) = edgeFlip([3, 2], :);
+            edge_segid([2, 3], :) = edge_segid([3, 2], :);
             atan2d_value([2, 3], :) = atan2d_value([3, 2], :);
             % angles([2, 3], :) = angles([3, 2], :);
             edgeConvexityFeature([2, 3], :) = edgeConvexityFeature([3, 2], :);
@@ -82,6 +88,7 @@ function combinedFeatures = getCombinedFeatures(bndinfo, im)
         adjacentEdgeInfo = [];
         adjacentEdgeInfo.edgeId = num2cell(edgeId);
         adjacentEdgeInfo.edgeFlip = num2cell(edgeFlip);
+        adjacentEdgeInfo.edge_segid = num2cell(edge_segid);
         % adjacentEdgeInfo.XY = num2cell(XY);
         adjacentEdgeInfo.atan2d_value = num2cell(atan2d_value);
         adjacentEdgeInfo.angles = num2cell(angles);
