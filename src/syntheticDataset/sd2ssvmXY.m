@@ -10,7 +10,7 @@
 % Copyright (c) 2019 Feng Panhe
 %}
 
-function [X, Y, infos, bndinfo] = sd2ssvmXY(file_name, is_new)
+function [X, Y, edgeid, bndinfo] = sd2ssvmXY(file_name)
     %gcd2ssvmXY - 从gcd数据集生成ssvm的 X Y 形式的数组
     %
     % Syntax: [X, Y] = gcd2ssvmXY(mat_fileNameList)
@@ -18,9 +18,6 @@ function [X, Y, infos, bndinfo] = sd2ssvmXY(file_name, is_new)
     % Long description
     % infos:
     %   +1: Edge id
-    if ~exist('is_new', 'var') && isempty(is_new)
-        is_new = false;
-    end
 
     GcdGtPath = 'resources/SyntheticDataset/gtsave/';
     GcdImPath = 'resources/SyntheticDataset/images/';
@@ -56,8 +53,8 @@ function [X, Y, infos, bndinfo] = sd2ssvmXY(file_name, is_new)
     itemInfos = getSSVMClassifierFeatures(bndinfo, combinedFeatures, 'train');
 
     Y = itemInfos(:, 1);
-    infos = itemInfos(:, 2);
+    edgeid = itemInfos(:, 2);
     X = itemInfos(:, 3:end);
-
+    % edgeid_Y_X = [edgeid, Y, X];
     bndinfo.combinedFeatures = combinedFeatures;
 end

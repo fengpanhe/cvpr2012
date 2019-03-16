@@ -1,4 +1,4 @@
-function [ssvm_precision, mrf_precision, ssvm_predict_score, mrf_predict_score, ssvm_tj_errata, mrf_tj_errata] = TJTest(model_file, dataset_path, image_name, off_plot)
+function [ssvm_precision, mrf_precision, ssvm_predict_score, mrf_predict_score, ssvm_tj_errata, mrf_tj_errata] = oneImageTJTest(model_file, dataset_path, image_name, off_plot)
     %TJTest - Description
     %
     % Syntax: output = TJTest(input)
@@ -18,6 +18,11 @@ function [ssvm_precision, mrf_precision, ssvm_predict_score, mrf_predict_score, 
 
     image_f = imread(image_file);
     load(gt_file, 'bndinfo');
+
+    if isfield(bndinfo, 'labels')
+        [bndinfo, ~] = updateBoundaryInfo2(bndinfo, bndinfo.labels);
+    end
+
     load(pbim_file, 'pbim');
 
     bndinfo.pbim = pbim;
@@ -25,6 +30,16 @@ function [ssvm_precision, mrf_precision, ssvm_predict_score, mrf_predict_score, 
     combined_features = getCombinedFeatures(bndinfo, image_f);
 
     bndinfo.combined_features = combined_features;
+
+    if bndinfo.combined_features.TJnum == 0
+        ssvm_precision = 0;
+        mrf_precision = 0;
+        ssvm_predict_score = [];
+        mrf_predict_score = [];
+        ssvm_tj_errata = [];
+        mrf_tj_errata = [];
+        return;
+    end
 
     item_infos = getSSVMClassifierFeatures(bndinfo, combined_features, 'train');
 
@@ -36,7 +51,6 @@ function [ssvm_precision, mrf_precision, ssvm_predict_score, mrf_predict_score, 
     ssvm_predict_score = SSVMPredict(X, Y, model_file);
 
     image_id = zeros(numel(edge_id), 1);
-    [ssvm_precision, ssvm_tj_errata] = calcTJPrecision(X(:, 1), Y(:, 1), ssvm_predict_score);
 
     tj_num = bndinfo.combined_features.TJnum;
     tj_infos = bndinfo.combined_features.TJInfo;
@@ -48,41 +62,48 @@ function [ssvm_precision, mrf_precision, ssvm_predict_score, mrf_predict_score, 
     end
 
     % mrf 优化
+    disp('Start MRF optimization...');
+    tic;
     penalty = 20;
     mrfMatrix = [image_id, edges_segid, X(:, 1), ssvm_predict_score];
     mrfMatrix = MRFEnergy_mex(penalty, double(mrfMatrix), size(mrfMatrix));
     mrf_predict_score = mrfMatrix(:, 4);
-
-    % 有向图
-    seg_num = max(max(bndinfo.wseg));
-
-    tj_num = bndinfo.combined_features.TJnum;
-    adjacency_matrix = zeros(seg_num);
-
-    for tj_i = 1:tj_num
-        
-        index_tmp = tj_i * 3;
-        tj_edge_score = mrf_predict_score(index_tmp - 2:index_tmp, 1);
-        tj_edge_segid = edges_segid(index_tmp - 2:index_tmp, 1);
-        segid_score = [tj_edge_segid, tj_edge_score];
-        segid_score = sortrows(segid_score, 2);
-        adjacency_matrix(segid_score(3, 1), segid_score(2, 1)) = adjacency_matrix(segid_score(3, 1), segid_score(2, 1)) + segid_score(3, 2) - segid_score(2, 2);
-        adjacency_matrix(segid_score(3, 1), segid_score(1, 1)) = adjacency_matrix(segid_score(3, 1), segid_score(1, 1)) + segid_score(3, 2) - segid_score(1, 2);
-        adjacency_matrix(segid_score(2, 1), segid_score(1, 1)) = adjacency_matrix(segid_score(2, 1), segid_score(1, 1)) + segid_score(2, 2) - segid_score(1, 2);
-    end
-
-    G = digraph(adjacency_matrix);
-    plot(G, 'Layout', 'force', 'EdgeLabel', G.Edges.Weight);
+    mrf_time_cost = toc;
+    fprintf('End of MRF -- time cost: %f s\n', mrf_time_cost);
 
     % 结果处理
-
+    [ssvm_precision, ssvm_tj_errata] = calcTJPrecision(X(:, 1), Y(:, 1), ssvm_predict_score);
     [mrf_precision, mrf_tj_errata] = calcTJPrecision(X(:, 1), Y(:, 1), mrf_predict_score);
 
     save(gt_file, 'bndinfo');
 
     if ~off_plot
-        fprintf('正在画图片 %s 的 TJ...\n', image_name);
+        % 有向图
+        seg_num = max(max(bndinfo.wseg));
+
+        tj_num = bndinfo.combined_features.TJnum;
+        adjacency_matrix = zeros(seg_num);
+
+        for tj_i = 1:tj_num
+
+            index_tmp = tj_i * 3;
+            tj_edge_score = mrf_predict_score(index_tmp - 2:index_tmp, 1);
+            tj_edge_segid = edges_segid(index_tmp - 2:index_tmp, 1);
+            segid_score = [tj_edge_segid, tj_edge_score];
+            segid_score = sortrows(segid_score, 2);
+            adjacency_matrix(segid_score(3, 1), segid_score(2, 1)) = adjacency_matrix(segid_score(3, 1), segid_score(2, 1)) + segid_score(3, 2) - segid_score(2, 2);
+            adjacency_matrix(segid_score(3, 1), segid_score(1, 1)) = adjacency_matrix(segid_score(3, 1), segid_score(1, 1)) + segid_score(3, 2) - segid_score(1, 2);
+            adjacency_matrix(segid_score(2, 1), segid_score(1, 1)) = adjacency_matrix(segid_score(2, 1), segid_score(1, 1)) + segid_score(2, 2) - segid_score(1, 2);
+        end
+
+        G = digraph(adjacency_matrix);
+        plot(G, 'Layout', 'force', 'EdgeLabel', G.Edges.Weight);
+        hold off;
+        fprintf('\n\n正在画图片 %s 的 TJ...\n\n', image_name);
+        plot1 = toc;
         plotTJTestResult(bndinfo, ssvm_predict_score);
+        plot2 = toc;
+        fprintf('\nEnd of ploting TJ -- time cost: %f s\n', plot2 - plot1);
     end
 
 end
@@ -119,37 +140,41 @@ function plotTJTestResult(bndinfo, predict_score)
 
     set(0, 'DefaultFigureVisible', 'off');
 
-    for tj_i = 1:tj_num
+    parfor tj_i = 1:tj_num
         tj_edge_id = cell2mat(tj_infos{tj_i}.edgeId);
         tj_edge_flip = logical(cell2mat(tj_infos{tj_i}.edgeFlip));
-
-        figure('Color', 'w', 'Position', [0, 0, image_size([2, 1])]);
-        set(gca, 'position', [0 0 1 1]);
-        set(gca, 'YDir', 'reverse');
-        hold on;
-        plot([0, 0, image_size(2), image_size(2)], [0, image_size(1), 0, image_size(1)], '.');
-
-        predict_lab = zeros(3, 1);
-        ps_i = tj_i * 3 - 2;
-        predict_lab(1) = 1 + xor(predict_score(ps_i) < predict_score(ps_i + 1), tj_edge_flip(1));
-        predict_lab(2) = 1 + xor(predict_score(ps_i + 1) < predict_score(ps_i + 2), tj_edge_flip(2));
-        predict_lab(3) = 1 + xor(predict_score(ps_i + 2) < predict_score(ps_i), tj_edge_flip(3));
-        plotOneTJ(edges_xy(tj_edge_id, :), predict_lab, 'r', image_size);
-        plotOneTJ(edges_xy(tj_edge_id, :), edges_lab(tj_edge_id), 'b', image_size);
-        save_file_name = strcat(image_name, '_tj', num2str(tj_i), '.jpg');
-
-        if all(predict_lab == edges_lab(tj_edge_id))
-            save_file_name = strcat('correct_', save_file_name);
-        else
-            save_file_name = strcat('incorrect_', save_file_name);
-        end
-
-        print('-djpeg', '-r0', fullfile(image_save_dir, save_file_name));
-        hold off;
-        close all;
+        ps_i = tj_i * 3;
+        writeOneTJ(tj_i, image_name, image_size, edges_xy(tj_edge_id), edges_lab(tj_edge_id), tj_edge_flip, predict_score(ps_i - 2:ps_i), image_save_dir);
     end
 
     set(0, 'DefaultFigureVisible', 'on');
+end
+
+function writeOneTJ(tj_i, image_name, image_size, edges_XY, edges_lab, edges_flip, predict_score, image_save_dir)
+    figure('Color', 'w', 'Position', [0, 0, image_size([2, 1])]);
+    set(gca, 'position', [0 0 1 1]);
+    set(gca, 'YDir', 'reverse');
+    hold on;
+    plot([0, 0, image_size(2), image_size(2)], [0, image_size(1), 0, image_size(1)], '.');
+
+    predict_lab = zeros(3, 1);
+
+    predict_lab(1) = 1 + xor(predict_score(1) < predict_score(2), edges_flip(1));
+    predict_lab(2) = 1 + xor(predict_score(2) < predict_score(3), edges_flip(2));
+    predict_lab(3) = 1 + xor(predict_score(3) < predict_score(1), edges_flip(3));
+    plotOneTJ(edges_XY, predict_lab, 'r', image_size);
+    plotOneTJ(edges_XY, edges_lab, 'b', image_size);
+    save_file_name = strcat(image_name, '_tj', num2str(tj_i), '.jpg');
+
+    if all(predict_lab == edges_lab)
+        save_file_name = strcat('correct_', save_file_name);
+    else
+        save_file_name = strcat('incorrect_', save_file_name);
+    end
+
+    print('-djpeg', '-r0', fullfile(image_save_dir, save_file_name));
+    hold off;
+    close all;
 end
 
 function plotOneTJ(edges_xy, edges_lab, ann_color, image_size)

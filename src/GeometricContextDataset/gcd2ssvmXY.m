@@ -21,7 +21,7 @@ function [X, Y, infos, bndinfo2] = gcd2ssvmXY(file_name)
 
     GcdGtPath = 'resources/GeometricContextDataset/gtsave/';
     GcdImPath = 'resources/GeometricContextDataset/images/';
-    GcdPbimPath = 'result/tmp/pbim/';
+    GcdPbimPath = 'resources/GeometricContextDataset/pbim/';
 
     mat_file = strcat(GcdGtPath, file_name, '_gt.mat');
     im_file = strcat(GcdImPath, file_name, '.jpg');

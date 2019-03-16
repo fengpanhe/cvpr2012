@@ -9,7 +9,7 @@
 % -----
 % Copyright (c) 2019 Feng Panhe
 %}
-function [ssvm_precision, mrf_precision] = sdSSVMTest(model_file, off_plot)
+function [ssvm_precision, mrf_precision, each_res] = sdSSVMTest(model_file)
     %sdSSVMTest - Description
     %
     % Syntax: [precision1, precision2] = sdSSVMTest(input)
@@ -22,29 +22,5 @@ function [ssvm_precision, mrf_precision] = sdSSVMTest(model_file, off_plot)
 
     file_name_list = strtok(fileList, '_');
 
-    tj_num = 0;
-    ssvm_correct_tj_num = 0;
-    mrf_correct_tj_num = 0;
-    ssvm_precision_list = zeros(1, numel(file_name_list));
-    mrf_precision_list = zeros(1, numel(file_name_list));
-
-    for i = 1:numel(file_name_list)
-        disp(file_name_list{i});
-        [ssvm_precision, mrf_precision, ...
-            ssvm_predict_score, mrf_predict_score, ...
-            ssvm_tj_errata, mrf_tj_errata] = ...
-            TJTest(model_file, dataset_path, file_name_list{i}, off_plot);
-        ssvm_precision_list(i) = ssvm_precision;
-        mrf_precision_list(i) = mrf_precision;
-        tj_num = tj_num + numel(ssvm_tj_errata) / 3;
-        ssvm_correct_tj_num = ssvm_correct_tj_num + sum(ssvm_tj_errata) / 3;
-        mrf_correct_tj_num = mrf_correct_tj_num + sum(mrf_tj_errata) / 3;
-    end
-
-    disp(file_name_list);
-    disp(ssvm_precision_list);
-    disp(mrf_precision_list);
-    ssvm_precision = ssvm_correct_tj_num / tj_num;
-    mrf_precision = mrf_correct_tj_num / tj_num;
-
+    [ssvm_precision, mrf_precision, each_res] = multImageTJTest(dataset_path, file_name_list, model_file);
 end
