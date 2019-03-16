@@ -40,265 +40,274 @@ function res = generateSyntheticDataset(image_num, dest_dir_path)
         mkdir(pbim_dir_path);
     end
 
-    min_shape_num = 5;
-    max_shape_num = 10;
+    shape_num_range = [5, 10];
 
     image_size = [1200, 800];
-    wseg_matix_indices = (1:(image_size(1) * image_size(2)))';
-    [wseg_matix_pos_x, wseg_matix_pos_y] = ind2sub(image_size, wseg_matix_indices);
 
     set(0, 'DefaultFigureVisible', 'off');
+    tic;
+    t1 = toc;
 
-    for i = 1:image_num
+    parfor i = 1:image_num
         %% 生成 imgae_num 个 image 和 对应的 gt.mat
-
         im_name = sprintf('sd%d', i);
         im_file = fullfile(im_dir_path, strcat(im_name, '.jpg'));
         gt_file = fullfile(gt_dir_path, strcat(im_name, '_gt.mat'));
         pbim_file = fullfile(pbim_dir_path, strcat(im_name, '_pbim.mat'));
-
-        edges_position = {};
-        junctions_position = [];
-        wseg_matix = zeros(image_size);
-        edges_spLR = [];
-
-        % 设置画布大小。plot 标定画布的角点，可避免坐标系自动调整
-        figure('Color', 'w', 'Position', [0, 0, image_size]);
-        set(gca, 'position', [0 0 1 1]);
-        set(gca, 'YDir', 'reverse');
-        hold on;
-        plot([0, 0, image_size(1), image_size(1)], [0, image_size(2), 0, image_size(2)], '.');
-
-        shape_num = randi(max_shape_num) + min_shape_num;
-        wseg_matix(:) = shape_num + 1;
-
-        for j = 1:shape_num
-            %% 画出 shape_num 个随机图形
-
-            % 随机画出一个图形，得到返回的顶点坐标 x，y
-            shape_x = [];
-            shape_y = [];
-            shape_type_id = randi(2);
-
-            switch shape_type_id
-                case 1
-                    [shape_x, shape_y] = drawOneRandomTriangle([0, image_size(1)], [0, image_size(2)], rand(1, 3));
-                case 2
-                    [shape_x, shape_y] = drawOneRandomRectangle([0, image_size(1)], [0, image_size(2)], rand(1, 3));
-            end
-
-            % 将 shape 的点的连接顺寻改为顺时针
-
-            if shape_x(2) == shape_x(1)
-
-                if shape_x(3) > shape_x(1)
-                    shape_x = flip(shape_x);
-                    shape_y = flip(shape_y);
-                end
-
-            elseif shape_y(2) == shape_y(1)
-
-                if shape_y(3) < shape_y(1)
-                    shape_x = flip(shape_x);
-                    shape_y = flip(shape_y);
-                end
-
-            else
-                slope = (shape_y(2) - shape_y(1)) / (shape_x(2) - shape_x(1));
-                aa = (shape_x(3) - shape_x(1)) / (shape_x(2) - shape_x(1)) - (shape_y(3) - shape_y(1)) / (shape_y(2) - shape_y(1));
-
-                if (slope > 0 && aa > 0) || (slope < 0 && aa < 0)
-                    shape_x = flip(shape_x);
-                    shape_y = flip(shape_y);
-                end
-
-            end
-
-            shape_face_index = shape_num - j + 1;
-
-            edges_num = numel(edges_position);
-            edges_position_remove_indexs = [];
-            shape_junctions_x = [];
-            shape_junctions_y = [];
-            shape_junctions_ii = [];
-
-            for edge_i = 1:edges_num
-                % edges_position 中的每条边与 shape 进行判断
-                edge_x = edges_position{edge_i}(:, 1);
-                edge_y = edges_position{edge_i}(:, 2);
-
-                [edge_points_in, ~] = inpolygon(edge_x, edge_y, shape_x, shape_y);
-
-                if edge_points_in
-                    % 此边被覆盖, 记录并跳过
-                    % edge 的所有点都在 shape 内部或边缘，此边被覆盖，edges_position_remove_indexs 记录被覆盖的边的位置
-                    edges_position_remove_indexs(end + 1) = edge_i;
-                    continue;
-                end
-
-                [junctions_x, junctions_y, ii] = polyxpoly(shape_x, shape_y, edge_x, edge_y);
-
-                if numel(junctions_x) > 0
-                    % 新的图形与边 edge 有交点，edge将被分割并产生节点, shape 的边也被节点分割
-                    new_edge_position = edgeSegmentedByShape(edge_x, edge_y, shape_x, shape_y, junctions_x, junctions_y, ii);
-
-                    edges_position{edge_i} = new_edge_position{1};
-                    edges_position = cat(2, edges_position, new_edge_position{2:end});
-                    new_edges_spLR = zeros(numel(new_edge_position) - 1, 2);
-                    new_edges_spLR(:, 1) = edges_spLR(edge_i, 1);
-                    new_edges_spLR(:, 2) = edges_spLR(edge_i, 2);
-                    edges_spLR = cat(1, edges_spLR, new_edges_spLR);
-
-                    shape_junctions_x = [shape_junctions_x; junctions_x];
-                    shape_junctions_y = [shape_junctions_y; junctions_y];
-                    shape_junctions_ii = [shape_junctions_ii; ii(:, 1)];
-                end
-
-            end
-
-            edges_position(edges_position_remove_indexs) = [];
-            edges_spLR(edges_position_remove_indexs, :) = [];
-
-            % shape 的边加入
-            if numel(shape_junctions_x) > 0
-                new_edge_position = shapeEdgeSegmentedByPoints(shape_x, shape_y, shape_junctions_x, shape_junctions_y, shape_junctions_ii);
-            else
-                new_edge_position = {[shape_x, shape_y]};
-            end
-
-            edges_position = cat(2, edges_position, new_edge_position);
-
-            % edges_spLR
-            new_edges_spLR = zeros(numel(new_edge_position), 2);
-            new_edges_spLR(:, 2) = shape_face_index;
-
-            for new_edge_i = 1:numel(new_edge_position)
-                new_edge_pos = new_edge_position{new_edge_i};
-                if size(new_edge_pos, 1) > 2
-                    point_xy = round(new_edge_pos(round(end / 2), :));
-                else
-                    point_xy = round( (new_edge_pos(1, :) + new_edge_pos(end, :)) / 2 );
-                end
-                new_edges_spLR(new_edge_i, 1) = wseg_matix(point_xy(1), point_xy(2));
-            end
-
-            edges_spLR = cat(1, edges_spLR, new_edges_spLR);
-            % wseg_matix
-            [wseg_matix_pos_in, ~] = inpolygon(wseg_matix_pos_x, wseg_matix_pos_y, shape_x, shape_y);
-            wseg_matix(wseg_matix_pos_in) = shape_face_index;
-
-            % 删除被覆盖的 junction
-            if numel(junctions_position) ~= 0
-                [junction_in, ~] = inpolygon(junctions_position(:, 1), junctions_position(:, 2), shape_x, shape_y);
-                junctions_position(junction_in, :) = [];
-            end
-
-            % 加入新的 junction
-            junctions_position = cat(1, junctions_position, [shape_junctions_x, shape_junctions_y]);
-        end % 画出图形的处理 end
-
-        %% bndinfo.edges.junctions 的值，边的两个端点在 junctions_position 中的 位置
-        bndinfo_edges_junctions = zeros(numel(edges_position), 2);
-
-        for edge_i = 1:numel(edges_position)
-            edge_start_xy = edges_position{edge_i}(1, [1, 2]);
-            edge_end_xy = edges_position{edge_i}(end, [1, 2]);
-            [~, Locb] = ismember([edge_start_xy; edge_end_xy], junctions_position, 'rows');
-
-            if Locb
-                bndinfo_edges_junctions(edge_i, [1, 2]) = Locb;
-            else
-                junctions_position(end + 1, :) = edge_start_xy;
-                bndinfo_edges_junctions(edge_i, [1, 2]) = size(junctions_position, 1);
-            end
-
-        end
-
-        %% bndinfo.edges.boundaryType 的值
-        edges_boundary_type = zeros(numel(edges_position) * 2, 1);
-        edges_boundary_type(end / 2 + 1:end) = 1;
-
-        %% edges.adjacency 的值，见 lib/iccv2011/src/processBoundaryInfo.m 的112行
-        % get 1) junctions adjacent to each edglet
-        %     2) junction adjacency in form of [directedEdglet nextJunction]
-        ne = numel(edges_position);
-        nj = size(junctions_position, 1);
-        jadj = cell(nj, 1);
-
-        for k = 1:ne
-            jadj{bndinfo_edges_junctions(k, 1)}(end + 1, 1) = k; % forward  ejunctions
-            jadj{bndinfo_edges_junctions(k, 2)}(end + 1, 1) = k; % reverse
-        end
-
-        % get directed edglet adjacency
-        eadj = cell(ne * 2, 1);
-
-        for k = 1:ne
-            % forward edge: assign adjecent edges (+ne if adj edge is reverse)
-            j = bndinfo_edges_junctions(k, 2);
-            eadj{k} = jadj{j}(:); % remove current edge   jadj
-            eadj{k}(eadj{k} == k) = [];
-            %eadj{k} = setdiff(jadj{j}(:, 1), k);
-            reverseind = (bndinfo_edges_junctions(eadj{k}, 2) == j); % reverse if meet at 2nd junction
-            eadj{k}(reverseind) = ne + eadj{k}(reverseind);
-            % backward edge: assign adjecent edges (+ne if adj edge is reverse)
-            j = bndinfo_edges_junctions(k, 1);
-            eadj{k + ne} = jadj{j}(:); % remove current edge
-            eadj{k + ne}(eadj{k + ne} == k) = [];
-            %eadj{k+ne} = setdiff(jadj{j}(:, 1), k);
-            reverseind = (bndinfo_edges_junctions(eadj{k + ne}, 2) == j); % reverse if meet at 2nd junction first
-            eadj{k + ne}(reverseind) = ne + eadj{k + ne}(reverseind);
-        end
-
-        %% bndinfo.edges.thetaDirected 和 bndinfo.edges.thetaUndirected ，见 lib/iccv2011/src/processBoundaryInfo.m 的145行
-        etheta2 = zeros(ne, 1); % directed orientation
-        etheta = zeros(ne, 1); % undirected orientation
-
-        for k = 1:ne
-
-            jx = junctions_position(bndinfo_edges_junctions(k, :), 1);
-            jy = junctions_position(bndinfo_edges_junctions(k, :), 2);
-            etheta2(k) = atan2(-(jy(2) - jy(1)), jx(2) - jx(1));
-            etheta(k) = mod(etheta2(k) + pi / 2, pi) - pi / 2;
-            if etheta(k) == -pi / 2, etheta(k) = pi / 2; end
-
-        end
-
-        bndinfo.edges.indices = posCell2indCell(image_size, edges_position);
-        bndinfo.edges.junctions = uint32(bndinfo_edges_junctions);
-        bndinfo.edges.adjacency = eadj;
-        bndinfo.edges.spLR = uint16(edges_spLR);
-        bndinfo.edges.thetaDirected = etheta2;
-        bndinfo.edges.thetaUndirected = etheta;
-        bndinfo.edges.boundaryType = edges_boundary_type;
-        bndinfo.imname = strcat(im_name, '.png');
-        bndinfo.imsize = image_size([2, 1]);
-        bndinfo.junctions.position = round([junctions_position(:, 1), junctions_position(:, 2)]);
-        bndinfo.ne = numel(edges_position);
-        bndinfo.nj = size(junctions_position, 1);
-        bndinfo.nseg = max(max(wseg_matix));
-        bndinfo.wseg = uint16(transpose(wseg_matix));
-        save(gt_file, 'bndinfo');
-
-        % for ii = 1:numel(edges_position)
-        %     hold on;
-        %     plot(edges_position{ii}(:, 1), edges_position{ii}(:, 2), 'b', 'LineWidth', 2);
-        % end
-
-        % hold on;
-        % mapshow(junctions_position(:, 1), junctions_position(:, 2), 'DisplayType', 'point', 'Marker', 'o');
-
-        axis off;
-        % print('-dpng', '-r0', [im_file(1:end - 4) '.png']);
-        print('-djpeg', '-r0', im_file);
-        % close all;
-        im = imread(im_file);
-        pbim = pbCGTG_nonmax(double(im) / 255);
-        save(pbim_file, 'pbim');
+        generateOneImage(image_size, shape_num_range, im_name, im_file, gt_file, pbim_file);
     end
 
+    t2 = toc;
+    fprintf('time: %f \n', t2 - t1);
     set(0, 'DefaultFigureVisible', 'on');
 
+end
+
+function generateOneImage(image_size, shape_num_range, im_name, im_file, gt_file, pbim_file)
+    min_shape_num = shape_num_range(1);
+    max_shape_num = shape_num_range(2);
+    wseg_matix_indices = (1:(image_size(1) * image_size(2)))';
+    [wseg_matix_pos_x, wseg_matix_pos_y] = ind2sub(image_size, wseg_matix_indices);
+    edges_position = {};
+    junctions_position = [];
+    wseg_matix = zeros(image_size);
+    edges_spLR = [];
+
+    % 设置画布大小。plot 标定画布的角点，可避免坐标系自动调整
+    figure('Color', 'w', 'Position', [0, 0, image_size]);
+    set(gca, 'position', [0 0 1 1]);
+    set(gca, 'YDir', 'reverse');
+    hold on;
+    plot([0, 0, image_size(1), image_size(1)], [0, image_size(2), 0, image_size(2)], '.');
+
+    shape_num = randi(max_shape_num) + min_shape_num;
+    wseg_matix(:) = shape_num + 1;
+
+    for j = 1:shape_num
+        %% 画出 shape_num 个随机图形
+
+        % 随机画出一个图形，得到返回的顶点坐标 x，y
+        shape_x = [];
+        shape_y = [];
+        shape_type_id = randi(2);
+
+        switch shape_type_id
+            case 1
+                [shape_x, shape_y] = drawOneRandomTriangle([0, image_size(1)], [0, image_size(2)], rand(1, 3));
+            case 2
+                [shape_x, shape_y] = drawOneRandomRectangle([0, image_size(1)], [0, image_size(2)], rand(1, 3));
+        end
+
+        % 将 shape 的点的连接顺寻改为顺时针
+
+        if shape_x(2) == shape_x(1)
+
+            if shape_x(3) > shape_x(1)
+                shape_x = flip(shape_x);
+                shape_y = flip(shape_y);
+            end
+
+        elseif shape_y(2) == shape_y(1)
+
+            if shape_y(3) < shape_y(1)
+                shape_x = flip(shape_x);
+                shape_y = flip(shape_y);
+            end
+
+        else
+            slope = (shape_y(2) - shape_y(1)) / (shape_x(2) - shape_x(1));
+            aa = (shape_x(3) - shape_x(1)) / (shape_x(2) - shape_x(1)) - (shape_y(3) - shape_y(1)) / (shape_y(2) - shape_y(1));
+
+            if (slope > 0 && aa > 0) || (slope < 0 && aa < 0)
+                shape_x = flip(shape_x);
+                shape_y = flip(shape_y);
+            end
+
+        end
+
+        shape_face_index = shape_num - j + 1;
+
+        edges_num = numel(edges_position);
+        edges_position_remove_indexs = [];
+        shape_junctions_x = [];
+        shape_junctions_y = [];
+        shape_junctions_ii = [];
+
+        for edge_i = 1:edges_num
+            % edges_position 中的每条边与 shape 进行判断
+            edge_x = edges_position{edge_i}(:, 1);
+            edge_y = edges_position{edge_i}(:, 2);
+
+            [edge_points_in, ~] = inpolygon(edge_x, edge_y, shape_x, shape_y);
+
+            if edge_points_in
+                % 此边被覆盖, 记录并跳过
+                % edge 的所有点都在 shape 内部或边缘，此边被覆盖，edges_position_remove_indexs 记录被覆盖的边的位置
+                edges_position_remove_indexs(end + 1) = edge_i;
+                continue;
+            end
+
+            [junctions_x, junctions_y, ii] = polyxpoly(shape_x, shape_y, edge_x, edge_y);
+
+            if numel(junctions_x) > 0
+                % 新的图形与边 edge 有交点，edge将被分割并产生节点, shape 的边也被节点分割
+                new_edge_position = edgeSegmentedByShape(edge_x, edge_y, shape_x, shape_y, junctions_x, junctions_y, ii);
+
+                edges_position{edge_i} = new_edge_position{1};
+                edges_position = cat(2, edges_position, new_edge_position{2:end});
+                new_edges_spLR = zeros(numel(new_edge_position) - 1, 2);
+                new_edges_spLR(:, 1) = edges_spLR(edge_i, 1);
+                new_edges_spLR(:, 2) = edges_spLR(edge_i, 2);
+                edges_spLR = cat(1, edges_spLR, new_edges_spLR);
+
+                shape_junctions_x = [shape_junctions_x; junctions_x];
+                shape_junctions_y = [shape_junctions_y; junctions_y];
+                shape_junctions_ii = [shape_junctions_ii; ii(:, 1)];
+            end
+
+        end
+
+        edges_position(edges_position_remove_indexs) = [];
+        edges_spLR(edges_position_remove_indexs, :) = [];
+
+        % shape 的边加入
+        if numel(shape_junctions_x) > 0
+            new_edge_position = shapeEdgeSegmentedByPoints(shape_x, shape_y, shape_junctions_x, shape_junctions_y, shape_junctions_ii);
+        else
+            new_edge_position = {[shape_x, shape_y]};
+        end
+
+        edges_position = cat(2, edges_position, new_edge_position);
+
+        % edges_spLR
+        new_edges_spLR = zeros(numel(new_edge_position), 2);
+        new_edges_spLR(:, 2) = shape_face_index;
+
+        for new_edge_i = 1:numel(new_edge_position)
+            new_edge_pos = new_edge_position{new_edge_i};
+
+            if size(new_edge_pos, 1) > 2
+                point_xy = round(new_edge_pos(round(end / 2), :));
+            else
+                point_xy = round((new_edge_pos(1, :) + new_edge_pos(end, :)) / 2);
+            end
+
+            new_edges_spLR(new_edge_i, 1) = wseg_matix(point_xy(1), point_xy(2));
+        end
+
+        edges_spLR = cat(1, edges_spLR, new_edges_spLR);
+        % wseg_matix
+        [wseg_matix_pos_in, ~] = inpolygon(wseg_matix_pos_x, wseg_matix_pos_y, shape_x, shape_y);
+        wseg_matix(wseg_matix_pos_in) = shape_face_index;
+
+        % 删除被覆盖的 junction
+        if numel(junctions_position) ~= 0
+            [junction_in, ~] = inpolygon(junctions_position(:, 1), junctions_position(:, 2), shape_x, shape_y);
+            junctions_position(junction_in, :) = [];
+        end
+
+        % 加入新的 junction
+        junctions_position = cat(1, junctions_position, [shape_junctions_x, shape_junctions_y]);
+    end % 画出图形的处理 end
+
+    %% bndinfo.edges.junctions 的值，边的两个端点在 junctions_position 中的 位置
+    bndinfo_edges_junctions = zeros(numel(edges_position), 2);
+
+    for edge_i = 1:numel(edges_position)
+        edge_start_xy = edges_position{edge_i}(1, [1, 2]);
+        edge_end_xy = edges_position{edge_i}(end, [1, 2]);
+        [~, Locb] = ismember([edge_start_xy; edge_end_xy], junctions_position, 'rows');
+
+        if Locb
+            bndinfo_edges_junctions(edge_i, [1, 2]) = Locb;
+        else
+            junctions_position(end + 1, :) = edge_start_xy;
+            bndinfo_edges_junctions(edge_i, [1, 2]) = size(junctions_position, 1);
+        end
+
+    end
+
+    %% bndinfo.edges.boundaryType 的值
+    edges_boundary_type = zeros(numel(edges_position) * 2, 1);
+    edges_boundary_type(end / 2 + 1:end) = 1;
+
+    %% edges.adjacency 的值，见 lib/iccv2011/src/processBoundaryInfo.m 的112行
+    % get 1) junctions adjacent to each edglet
+    %     2) junction adjacency in form of [directedEdglet nextJunction]
+    ne = numel(edges_position);
+    nj = size(junctions_position, 1);
+    jadj = cell(nj, 1);
+
+    for k = 1:ne
+        jadj{bndinfo_edges_junctions(k, 1)}(end + 1, 1) = k; % forward  ejunctions
+        jadj{bndinfo_edges_junctions(k, 2)}(end + 1, 1) = k; % reverse
+    end
+
+    % get directed edglet adjacency
+    eadj = cell(ne * 2, 1);
+
+    for k = 1:ne
+        % forward edge: assign adjecent edges (+ne if adj edge is reverse)
+        j = bndinfo_edges_junctions(k, 2);
+        eadj{k} = jadj{j}(:); % remove current edge   jadj
+        eadj{k}(eadj{k} == k) = [];
+        %eadj{k} = setdiff(jadj{j}(:, 1), k);
+        reverseind = (bndinfo_edges_junctions(eadj{k}, 2) == j); % reverse if meet at 2nd junction
+        eadj{k}(reverseind) = ne + eadj{k}(reverseind);
+        % backward edge: assign adjecent edges (+ne if adj edge is reverse)
+        j = bndinfo_edges_junctions(k, 1);
+        eadj{k + ne} = jadj{j}(:); % remove current edge
+        eadj{k + ne}(eadj{k + ne} == k) = [];
+        %eadj{k+ne} = setdiff(jadj{j}(:, 1), k);
+        reverseind = (bndinfo_edges_junctions(eadj{k + ne}, 2) == j); % reverse if meet at 2nd junction first
+        eadj{k + ne}(reverseind) = ne + eadj{k + ne}(reverseind);
+    end
+
+    %% bndinfo.edges.thetaDirected 和 bndinfo.edges.thetaUndirected ，见 lib/iccv2011/src/processBoundaryInfo.m 的145行
+    etheta2 = zeros(ne, 1); % directed orientation
+    etheta = zeros(ne, 1); % undirected orientation
+
+    for k = 1:ne
+
+        jx = junctions_position(bndinfo_edges_junctions(k, :), 1);
+        jy = junctions_position(bndinfo_edges_junctions(k, :), 2);
+        etheta2(k) = atan2(-(jy(2) - jy(1)), jx(2) - jx(1));
+        etheta(k) = mod(etheta2(k) + pi / 2, pi) - pi / 2;
+        if etheta(k) == -pi / 2, etheta(k) = pi / 2; end
+
+    end
+
+    bndinfo.edges.indices = posCell2indCell(image_size, edges_position);
+    bndinfo.edges.junctions = uint32(bndinfo_edges_junctions);
+    bndinfo.edges.adjacency = eadj;
+    bndinfo.edges.spLR = uint16(edges_spLR);
+    bndinfo.edges.thetaDirected = etheta2;
+    bndinfo.edges.thetaUndirected = etheta;
+    bndinfo.edges.boundaryType = edges_boundary_type;
+    bndinfo.imname = strcat(im_name, '.png');
+    bndinfo.imsize = image_size([2, 1]);
+    bndinfo.junctions.position = round([junctions_position(:, 1), junctions_position(:, 2)]);
+    bndinfo.ne = numel(edges_position);
+    bndinfo.nj = size(junctions_position, 1);
+    bndinfo.nseg = max(max(wseg_matix));
+    bndinfo.wseg = uint16(transpose(wseg_matix));
+    save(gt_file, 'bndinfo');
+
+    % for ii = 1:numel(edges_position)
+    %     hold on;
+    %     plot(edges_position{ii}(:, 1), edges_position{ii}(:, 2), 'b', 'LineWidth', 2);
+    % end
+
+    % hold on;
+    % mapshow(junctions_position(:, 1), junctions_position(:, 2), 'DisplayType', 'point', 'Marker', 'o');
+
+    axis off;
+    % print('-dpng', '-r0', [im_file(1:end - 4) '.png']);
+    print('-djpeg', '-r0', im_file);
+    % close all;
+    im = imread(im_file);
+    pbim = pbCGTG_nonmax(double(im) / 255);
+    save(pbim_file, 'pbim');
 end
 
 function ind_cell = posCell2indCell(xy_szie, pos_cell)

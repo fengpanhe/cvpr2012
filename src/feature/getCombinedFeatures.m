@@ -18,87 +18,39 @@ function combinedFeatures = getCombinedFeatures(bndinfo, im)
     jPos = bndinfo.junctions.position;
     edges_spLR = bndinfo.edges.spLR;
 
-    %% T junction feature info
-    Tjinfo = {};
-    for k = 1:size(jPos, 1)
-        adjacentEdgeIndexs = find(ejunction == k);
+    edges_XY = cell(numel(eindices), 1);
 
-        if numel(adjacentEdgeIndexs) ~= 3
-            % not T-junction
-            continue;
-        end
-
-        % XY = cell(3, 1)
-        edgeId = zeros([3, 1], 'single');
-        edgeFlip = zeros([3, 1], 'single');
-        edge_segid = zeros([3,1], 'single');
-        atan2d_value = zeros([3, 1], 'single');
-        angles = zeros([3, 2], 'single');
-        edgeConvexityFeature = zeros([3, 36], 'single');
-
-        for k1 = 1:numel(adjacentEdgeIndexs)
-            [i, j] = ind2sub(size(ejunction), adjacentEdgeIndexs(k1));
-            [edgeY, edgeX] = ind2sub(imsize(1:2), double(eindices{i}));
-            edgeXY = [edgeX, edgeY];
-
-            if j == 2
-                edgeXY = flip(edgeXY);
-                edgeFlip(k1, 1) = 1;
-                edge_segid(k1, 1) = edges_spLR(i, 2);
-            else
-                edge_segid(k1, 1) = edges_spLR(i, 1);
-            end
-
-            edgeId(k1, 1) = i;
-            atan2d_value(k1, :) = clacAtan2d_value(edgeXY);
-            edgeConvexityFeature(k1, :) = getEdgeConvexityFeature(edgeXY);
-        end
-
-        if find(isnan(atan2d_value) == 1)
-            continue;
-        end
-
-        % Align three sides clockwise
-        clockwiseAngle1_2 = atan2d_value(1) - atan2d_value(2);
-
-        if clockwiseAngle1_2 < 0
-            clockwiseAngle1_2 = clockwiseAngle1_2 + 360;
-        end
-
-        clockwiseAngle1_3 = atan2d_value(1) - atan2d_value(3);
-
-        if clockwiseAngle1_3 < 0
-            clockwiseAngle1_3 = clockwiseAngle1_3 + 360;
-        end
-
-        if clockwiseAngle1_3 < clockwiseAngle1_2
-            edgeId([2, 3], :) = edgeId([3, 2], :);
-            edgeFlip([2, 3], :) = edgeFlip([3, 2], :);
-            edge_segid([2, 3], :) = edge_segid([3, 2], :);
-            atan2d_value([2, 3], :) = atan2d_value([3, 2], :);
-            % angles([2, 3], :) = angles([3, 2], :);
-            edgeConvexityFeature([2, 3], :) = edgeConvexityFeature([3, 2], :);
-        end
-
-        angles(1, :) = atan2d_value(1) - atan2d_value([2, 3]);
-        angles(2, :) = atan2d_value(2) - atan2d_value([3, 1]);
-        angles(3, :) = atan2d_value(3) - atan2d_value([1, 2]);
-        angles = mod(angles + 360, 360) / 360;
-        adjacentEdgeInfo = [];
-        adjacentEdgeInfo.edgeId = num2cell(edgeId);
-        adjacentEdgeInfo.edgeFlip = num2cell(edgeFlip);
-        adjacentEdgeInfo.edge_segid = num2cell(edge_segid);
-        adjacentEdgeInfo.atan2d_value = num2cell(atan2d_value);
-        adjacentEdgeInfo.angles = num2cell(angles);
-        adjacentEdgeInfo.edgeConvexityFeature = num2cell(edgeConvexityFeature);
-        Tjinfo{end + 1, 1} = adjacentEdgeInfo;
+    for i = 1:numel(eindices)
+        [edge_Y, edge_X] = ind2sub(imsize(1:2), double(eindices{i}));
+        edges_XY{i} = [edge_X, edge_Y];
     end
 
+    %% T junction feature info
+
+    j_edge_nums = accumarray([ejunction(:, 1); ejunction(:, 2)], 1);
+    tjs_id = find(j_edge_nums == 3);
+    tj_num = numel(tjs_id);
+    % tj_edge_num = 3 * tj_num;
+    % edges_id = zeros([tj_edge_num, 1], 'single');
+    % edges_filp = zeros([tj_edge_num, 1], 'single');
+    % edges_segid = zeros([tj_edge_num, 1], 'single');
+    % edges_atan2d_value = zeros([tj_edge_num, 1], 'single');
+    % edges_angle = zeros([tj_edge_num, 2], 'single');
+    % edges_convexity = zeros([tj_edge_num, 36], 'single');
+    tjs_info = cell(tj_num, 1);
+
+    for k = 1:tj_num
+        [ej_rows, ej_cols] = find(ejunction == tjs_id(k));
+        tjs_info{k} = getTjinfo(ej_rows, ej_cols, edges_XY(ej_rows), edges_spLR(ej_rows, :));
+    end
+
+    tjs_cell_len = cellfun(@length, tjs_info);
+    tjs_info(~logical(tjs_cell_len)) = [];
     % edge feature info
     edgeFeatures = getEdgeFeatures(bndinfo, bndinfo.pbim);
 
-    combinedFeatures.TJInfo = Tjinfo;
-    combinedFeatures.TJnum = size(Tjinfo, 1);
+    combinedFeatures.TJInfo = tjs_info;
+    combinedFeatures.TJnum = size(tjs_info, 1);
     combinedFeatures.edgeInfo = edgeFeatures;
 end
 
@@ -152,6 +104,70 @@ function ECFeature = getEdgeConvexityFeature(edgeXY)
 
     ECFeature = histcounts(thetas, edges);
     ECFeature = ECFeature / sum(ECFeature);
+end
+
+function tj_info = getTjinfo(ej_rows, ej_cols, edges_XY, edges_spLR)
+    %%  getTjinfo
+    edgeId = zeros([3, 1], 'single');
+    edgeFlip = zeros([3, 1], 'single');
+    edge_segid = zeros([3, 1], 'single');
+    atan2d_value = zeros([3, 1], 'single');
+    angles = zeros([3, 2], 'single');
+    edgeConvexityFeature = zeros([3, 36], 'single');
+
+    for k1 = 1:numel(ej_rows)
+        edgeXY = edges_XY{k1};
+
+        if ej_cols(k1) == 2
+            edgeXY = flip(edgeXY);
+            edgeFlip(k1, 1) = 1;
+            edge_segid(k1, 1) = edges_spLR(k1, 2);
+        else
+            edge_segid(k1, 1) = edges_spLR(k1, 1);
+        end
+
+        edgeId(k1, 1) = ej_rows(k1);
+        atan2d_value(k1, :) = clacAtan2d_value(edgeXY);
+        edgeConvexityFeature(k1, :) = getEdgeConvexityFeature(edgeXY);
+    end
+
+    if find(isnan(atan2d_value) == 1)
+        tj_info = {};
+        return;
+    end
+
+    % Align three sides clockwise
+    clockwiseAngle1_2 = atan2d_value(1) - atan2d_value(2);
+
+    if clockwiseAngle1_2 < 0
+        clockwiseAngle1_2 = clockwiseAngle1_2 + 360;
+    end
+
+    clockwiseAngle1_3 = atan2d_value(1) - atan2d_value(3);
+
+    if clockwiseAngle1_3 < 0
+        clockwiseAngle1_3 = clockwiseAngle1_3 + 360;
+    end
+
+    if clockwiseAngle1_3 < clockwiseAngle1_2
+        edgeId([2, 3], :) = edgeId([3, 2], :);
+        edgeFlip([2, 3], :) = edgeFlip([3, 2], :);
+        edge_segid([2, 3], :) = edge_segid([3, 2], :);
+        atan2d_value([2, 3], :) = atan2d_value([3, 2], :);
+        % angles([2, 3], :) = angles([3, 2], :);
+        edgeConvexityFeature([2, 3], :) = edgeConvexityFeature([3, 2], :);
+    end
+
+    angles(1, :) = atan2d_value(1) - atan2d_value([2, 3]);
+    angles(2, :) = atan2d_value(2) - atan2d_value([3, 1]);
+    angles(3, :) = atan2d_value(3) - atan2d_value([1, 2]);
+    angles = mod(angles + 360, 360) / 360;
+    tj_info.edgeId = num2cell(edgeId);
+    tj_info.edgeFlip = num2cell(edgeFlip);
+    tj_info.edge_segid = num2cell(edge_segid);
+    tj_info.atan2d_value = num2cell(atan2d_value);
+    tj_info.angles = num2cell(angles);
+    tj_info.edgeConvexityFeature = num2cell(edgeConvexityFeature);
 end
 
 function edgeFeatures = getEdgeFeatures(bndinfo, pbim)
