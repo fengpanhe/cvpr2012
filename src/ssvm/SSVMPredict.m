@@ -5,9 +5,9 @@ function predictScore = SSVMPredict(X, Y, modelFile)
     %
     % Long description
 
-    testFile = 'result/tmp/sssvmtestfile.txt';
+    testFile = [tempname, '.txt'];
     ssvmpredict = 'lib/svm_rank/build/svm_rank_classify';
-    predictFile = 'result/tmp/predict.txt';
+    predictFile = [tempname, '.txt'];
 
     if ~exist(ssvmpredict, 'file')
         error('File \"%s\" does not exist.', ssvmpredict);
@@ -38,4 +38,6 @@ function predictScore = SSVMPredict(X, Y, modelFile)
     predictf = fopen(predictFile, 'r');
     predictScore = fscanf(predictf, '%f');
     fclose(predictf);
+    delete(testFile);
+    delete(predictFile);
 end

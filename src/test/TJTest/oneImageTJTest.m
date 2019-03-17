@@ -117,7 +117,7 @@ function plotTJTestResult(bndinfo, predict_score)
 
     [~, image_name, ~] = fileparts(bndinfo.imname);
 
-    image_save_dir = fullfile('result', 'tj_test');
+    image_save_dir = fullfile('result', 'tj_test', image_name);
 
     if ~exist(image_save_dir, 'dir')
         mkdir(image_save_dir);

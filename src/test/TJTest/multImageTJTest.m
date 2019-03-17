@@ -16,7 +16,7 @@ function [ssvm_precision, mrf_precision, each_image_res] = multImageTJTest(datas
     end
 
     image_tj_nums = cellfun(@numel, ssvm_tj_errata_cell) / 3;
-    tj_num = sum(image_tj_nums) / 3;
+    tj_num = sum(image_tj_nums);
     ssvm_correct_tj_num = sum(cellfun(@sum, ssvm_tj_errata_cell)) / 3;
     mrf_correct_tj_num = sum(cellfun(@sum, mrf_tj_errata_cell)) / 3;
 
