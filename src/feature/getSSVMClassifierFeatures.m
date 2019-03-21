@@ -17,7 +17,7 @@ function itemInfos = getSSVMClassifierFeatures(bndinfo, combinedFeatures, type)
     %   +2: Continuity
     %   +2: Convexity (area and ratio) - not used
     %   +1: Chain length
-    %
+    %   +1: seg type
 
     boundarylabs = [];
 
@@ -61,6 +61,12 @@ function itemInfos = getSSVMClassifierFeatures(bndinfo, combinedFeatures, type)
         eIds = cell2mat(tjinfo.edgeId);
         features(row, col:col + 8) = edgeFeatures(eIds, 1:9);
         col = col + 9;
+
+        if isfield(tjinfo, 'seg_type')
+            features(row, col:col) = cell2mat(tjinfo.seg_type);
+            col = col + 1;
+        end
+
         % disp(col);
         if size(boundarylabs) ~= 0
             elabs = boundarylabs(eIds);

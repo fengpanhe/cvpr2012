@@ -41,7 +41,7 @@ function combinedFeatures = getCombinedFeatures(bndinfo, im)
 
     for k = 1:tj_num
         [ej_rows, ej_cols] = find(ejunction == tjs_id(k));
-        tjs_info{k} = getTjinfo(ej_rows, ej_cols, edges_XY(ej_rows), edges_spLR(ej_rows, :));
+        tjs_info{k} = getTjinfo(ej_rows, ej_cols, edges_XY(ej_rows), edges_spLR(ej_rows, :), bndinfo);
     end
 
     tjs_cell_len = cellfun(@length, tjs_info);
@@ -106,7 +106,7 @@ function ECFeature = getEdgeConvexityFeature(edgeXY)
     ECFeature = ECFeature / sum(ECFeature);
 end
 
-function tj_info = getTjinfo(ej_rows, ej_cols, edges_XY, edges_spLR)
+function tj_info = getTjinfo(ej_rows, ej_cols, edges_XY, edges_spLR, bndinfo)
     %%  getTjinfo
     edgeId = zeros([3, 1], 'single');
     edgeFlip = zeros([3, 1], 'single');
@@ -162,6 +162,11 @@ function tj_info = getTjinfo(ej_rows, ej_cols, edges_XY, edges_spLR)
     angles(2, :) = atan2d_value(2) - atan2d_value([3, 1]);
     angles(3, :) = atan2d_value(3) - atan2d_value([1, 2]);
     angles = mod(angles + 360, 360) / 360;
+    if isfield(bndinfo, 'type')
+        bndinfo_type = bndinfo.type;
+        seg_type = bndinfo_type(edge_segid)';
+        tj_info.seg_type = num2cell(seg_type);
+    end
     tj_info.edgeId = num2cell(edgeId);
     tj_info.edgeFlip = num2cell(edgeFlip);
     tj_info.edge_segid = num2cell(edge_segid);
