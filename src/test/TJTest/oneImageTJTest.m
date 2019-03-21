@@ -95,6 +95,9 @@ function [ssvm_precision, mrf_precision, ssvm_predict_score, mrf_predict_score, 
             adjacency_matrix(segid_score(3, 1), segid_score(1, 1)) = adjacency_matrix(segid_score(3, 1), segid_score(1, 1)) + segid_score(3, 2) - segid_score(1, 2);
             adjacency_matrix(segid_score(2, 1), segid_score(1, 1)) = adjacency_matrix(segid_score(2, 1), segid_score(1, 1)) + segid_score(2, 2) - segid_score(1, 2);
         end
+        for i = 1 : seg_num
+            adjacency_matrix(i, i) = 0;
+        end
 
         G = digraph(adjacency_matrix);
         plot(G, 'Layout', 'force', 'EdgeLabel', G.Edges.Weight);

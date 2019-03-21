@@ -27,7 +27,7 @@ function modelFilePath = SSVMTrain(X, Y, ssvm_model_file_path, ssvmlean_param)
     fprintf(trainf, formatStr, transpose([Y, X]));
     fclose(trainf);
 
-    ssvmlearn = strcat('lib/svm_rank/build/svm_rank_learn -c', ssvmlean_param);
+    ssvmlearn = strcat('lib/svm_rank/build/svm_rank_learn', ssvmlean_param);
     modelFilePath = ssvm_model_file_path;
     cmd = [ssvmlearn ' ' trainFile ' ' modelFilePath];
     fprintf('Start training...\n');

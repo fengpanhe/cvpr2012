@@ -304,7 +304,7 @@ function generateOneImage(image_size, shape_num_range, im_name, im_file, gt_file
     axis off;
     % print('-dpng', '-r0', [im_file(1:end - 4) '.png']);
     print('-djpeg', '-r0', im_file);
-    % close all;
+    close all;
     im = imread(im_file);
     pbim = pbCGTG_nonmax(double(im) / 255);
     save(pbim_file, 'pbim');
