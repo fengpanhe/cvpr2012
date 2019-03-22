@@ -13,6 +13,7 @@
 result/*
 resources/*
 lib/segbench/Dataset/*
+lib/vlfeat/*
 bin/*
 .vscode
 
