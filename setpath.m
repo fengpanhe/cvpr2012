@@ -1,4 +1,5 @@
 run('lib/vlfeat/toolbox/vl_setup');
+vl_version verbose;
 addpath(genpath('./lib/lightspeed-master'));
 addpath(genpath('./lib/segbench/lib/matlab'));
 addpath(genpath('./lib/GeometricContext'));

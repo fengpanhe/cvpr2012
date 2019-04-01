@@ -13,7 +13,7 @@ function [gt_file, image_file, pbim_file] = getDatasetInfoFile(dataset_path, ima
 
     gt_file = fullfile(dataset_path, 'gtsave', strcat(image_name, '_gt.mat'));
     image_file = fullfile(dataset_path, 'images', strcat(image_name, '.jpg'));
-    pbim_file = fullfile(dataset_path, 'pbim', strcat(image_name, '_pbim.mat'));
+    pbim_file = fullfile(dataset_path, 'pbim', strcat(image_name, '_pb.mat'));
 
     if ~exist(gt_file, 'file')
         error('File \"%s\" does not exist.', gt_file);
