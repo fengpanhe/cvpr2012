@@ -14,7 +14,7 @@ for f = 1:numel(bndinfo)
     
     bn = strtok(bndinfo(f).imname, '.');
     
-    gdata = load([gdatadir bn '_gdata.mat']);
+    gdata = load(fullfile(gdatadir, [bn '_gdata.mat']));
     imsegs = gdata.imsegs;
     
     gtlab{f} = g2g(imsegs.labels(imsegs.segimage)+1);        

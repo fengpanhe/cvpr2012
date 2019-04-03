@@ -1,29 +1,33 @@
 gcd_dir = fullfile('resources', 'GeometricContextDataset');
-classifiers_dir = fullfile('resources', 'ClassifierData');
 
-imdir = fullfile(gcd_dir, 'images');
-pbdir = fullfile(gcd_dir, 'pbim');
-gcdir = fullfile(gcd_dir, 'gconf');
-gtdir = fullfile(gcd_dir, 'gtsave');
-segdir = fullfile(gcd_dir, 'segs');
-gdatadir = fullfile(gcd_dir, 'geomdata2');
-smallsegdir = fullfile(gcd_dir, 'smallsegs');
+data_dir = fullfile('result', 'gcd', 'data');
 
-if ~exist(imdir, 'dir')
-    error('Directory \"%s\" does not exist.\n', imdir);
+images_dir = fullfile(gcd_dir, 'images');
+pb_dir = fullfile(gcd_dir, 'pbim');
+gc_dir = fullfile(gcd_dir, 'gconf');
+gt_dir = fullfile(gcd_dir, 'gtsave');
+
+segdir = fullfile(data_dir, 'segs');
+gdatadir = fullfile(data_dir, 'geomdata2');
+smallsegdir = fullfile(data_dir, 'smallsegs');
+
+if ~exist(images_dir, 'dir')
+    error('Directory \"%s\" does not exist.\n', images_dir);
 end
 
-load(fullfile(imdir, 'allimsegs2.mat'));
-load(fullfile(imdir, 'rand_indices.mat'));
+load(fullfile(images_dir, 'allimsegs2.mat'));
+load(fullfile(images_dir, 'rand_indices.mat'));
 fn = {imsegs(:).imname};
 
-generatePbFile(fn, imdir, pbdir);
+preparePbDir(fn, images_dir, pb_dir);
+prepareSegsDir(fn, images_dir, pb_dir, segdir);
+prepareGdataDir(fn, imsegs, gdatadir);
 
 tmp = load(fullfile(gcd_dir, 'data', 'classifiers_08_22_2005.mat'));
-APPtestDirectoryNew(tmp.segment_density, tmp.vert_classifier, tmp.horz_classifier, imdir, fn, gcdir);
+APPtestDirectoryNew(tmp.segment_density, tmp.vert_classifier, tmp.horz_classifier, images_dir, fn, gc_dir);
 clear tmp;
 
-exist_file_names = dir(fullfile(gtdir, '*_gt.mat'));
+exist_file_names = dir(fullfile(gt_dir, '*_gt.mat'));
 exist_file_names = {exist_file_names.name};
 exist_file_names = strtok(exist_file_names, '_');
 exist_file_names_num = numel(exist_file_names);

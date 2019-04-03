@@ -1,66 +1,84 @@
 function [thresh, valdata] = validateMergeMinSafe(X, bndinfo, dtBnd, dtBnd_fast, errThresh)
-% [thresh, valdata] = validateMergeMinSafe(X, bndinfo, dtBnd, dtBnd_fast, errThresh)
+    % [thresh, valdata] = validateMergeMinSafe(X, bndinfo, dtBnd, dtBnd_fast, errThresh)
 
-global DO_DISPLAY;
+    global DO_DISPLAY;
 
-for f = 1:numel(X)
+    for f = 1:numel(X)
 
-    disp(num2str(f)) 
-    if DO_DISPLAY                                
-        im = im2double(imread(['./iccvGroundTruth/images/' bndinfo(f).imname]));        
-        gtim = drawBoundaries(im, bndinfo(f), bndinfo(f).edges.boundaryType);
-        figure(2), imagesc(gtim), hold off, axis image        
-    end   
-    
-    pB = useBoundaryClassifier(bndinfo(f), X(f), dtBnd);
-    pB = [pB(:, [1 2]) ; pB(:, [1 3])];
+        fprintf("%d ", f);
 
-    [tmp1, valdata(f)] = mergeMinSafe(pB, bndinfo(f), X(f), dtBnd_fast, 0.5, 2, 1);           
-%    [tmp1, tmp2, valdata(f)] = mergeMin(pB, bndinfo(f), 0, 2, 1);    
-    
-    pcim = zeros(size(bndinfo(f).wseg));   
-    for k = 1:size(pB,1)/2
-        pcim(bndinfo(f).edges.indices{k}) = 1-pB(k, 1);
+        if DO_DISPLAY
+            im = im2double(imread(['./iccvGroundTruth/images/' bndinfo(f).imname]));
+            gtim = drawBoundaries(im, bndinfo(f), bndinfo(f).edges.boundaryType);
+            figure(2), imagesc(gtim), hold off, axis image
+        end
+
+        pB = useBoundaryClassifier(bndinfo(f), X(f), dtBnd);
+        pB = [pB(:, [1 2]); pB(:, [1 3])];
+
+        [tmp1, valdata(f)] = mergeMinSafe(pB, bndinfo(f), X(f), dtBnd_fast, 0.5, 2, 1);
+        %    [tmp1, tmp2, valdata(f)] = mergeMin(pB, bndinfo(f), 0, 2, 1);
+
+        pcim = zeros(size(bndinfo(f).wseg));
+
+        for k = 1:size(pB, 1) / 2
+            pcim(bndinfo(f).edges.indices{k}) = 1 - pB(k, 1);
+        end
+
+        figure(3), imagesc(ordfilt2(pcim, 9, ones(3))), axis image, colormap gray
+
+        drawnow;
+
     end
-    figure(3), imagesc(ordfilt2(pcim,9,ones(3))), axis image, colormap gray
-   
-    drawnow;
-    
-end
 
-cthresh = (0.001:0.001:0.50);
-err = zeros(size(cthresh));
-nregions = zeros(size(cthresh));
-for f = 1:numel(valdata)
-    for k = 1:numel(cthresh)
-        [tmp, minind] = min(abs(valdata(f).mergeCost-cthresh(k)));
-        err(k) = err(k) + valdata(f).segError(minind)/numel(valdata);
-        nregions(k) = nregions(k) + valdata(f).nregions(minind)/numel(valdata);
+    cthresh = (0.001:0.001:0.50);
+    err = zeros(size(cthresh));
+    nregions = zeros(size(cthresh));
+
+    for f = 1:numel(valdata)
+
+        for k = 1:numel(cthresh)
+            [tmp, minind] = min(abs(valdata(f).mergeCost - cthresh(k)));
+
+            if ~isempty(valdata(f).segError)
+                err(k) = err(k) + valdata(f).segError(minind) / numel(valdata);
+                nregions(k) = nregions(k) + valdata(f).nregions(minind) / numel(valdata);
+            end
+
+        end
+
     end
-end
-figure(1), hold off, plot(cthresh, err)
-figure(2), hold off, plot(err, nregions)
 
-rthresh = (5:5:1000);
-err = zeros(size(rthresh));
-nregions = zeros(size(rthresh));
-for f = 1:numel(valdata)
-    for k = 1:numel(rthresh)
-        [tmp, minind] = min(abs(valdata(f).nregions-rthresh(k)));
-        err(k) = err(k) + valdata(f).segError(minind)/numel(valdata);
-        nregions(k) = nregions(k) + valdata(f).nregions(minind)/numel(valdata);
+    figure(1), hold off, plot(cthresh, err)
+    figure(2), hold off, plot(err, nregions)
+
+    rthresh = (5:5:1000);
+    err = zeros(size(rthresh));
+    nregions = zeros(size(rthresh));
+
+    for f = 1:numel(valdata)
+
+        for k = 1:numel(rthresh)
+            [tmp, minind] = min(abs(valdata(f).nregions - rthresh(k)));
+
+            if ~isempty(valdata(f).segError)
+                err(k) = err(k) + valdata(f).segError(minind) / numel(valdata);
+                nregions(k) = nregions(k) + valdata(f).nregions(minind) / numel(valdata);
+            end
+
+        end
+
     end
-end
-figure(3), hold off, plot(rthresh, err)
-figure(4), hold off, plot(err, nregions)
 
-[tmp, minind] = min(abs(err-errThresh));
+    figure(3), hold off, plot(rthresh, err)
+    figure(4), hold off, plot(err, nregions)
 
-thresh = cthresh(minind);
+    [tmp, minind] = min(abs(err - errThresh));
 
-tmp = valdata;
-clear valdata;
-valdata.all = tmp;
-valdata.thresh = cthresh;
-valdata.err = err;
+    thresh = cthresh(minind);
 
+    tmp = valdata;
+    clear valdata;
+    valdata.all = tmp;
+    valdata.thresh = cthresh;
+    valdata.err = err;

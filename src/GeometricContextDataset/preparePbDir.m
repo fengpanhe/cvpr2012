@@ -1,5 +1,5 @@
 %{
-% Filename: generatePbFile.m
+% Filename: preparePbDir.m
 % Project: GeometricContextDataset
 % Created Date: Wednesday March 27th 2019
 % Author: Feng Panhe
@@ -9,7 +9,7 @@
 % -----
 % Copyright (c) 2019 Feng Panhe
 %}
-function generatePbFile(image_names, imdir, outdir)
+function preparePbDir(image_names, imdir, outdir)
 
     if ~exist(outdir, 'dir')
         mkdir(outdir);
@@ -24,18 +24,17 @@ function generatePbFile(image_names, imdir, outdir)
 
     not_exist_file_num = numel(not_exist_file_names);
 
-
     if not_exist_file_num > 0
 
         parfor i = 1:not_exist_file_num
-            
-            fprintf('\n\n image %d / %d .\n', i, not_exist_file_num);
+
+            fprintf('\n\n preparePbDir: processing image %d / %d .\n', i, not_exist_file_num);
             f_name = not_exist_file_names{i};
             image_f = imread(fullfile(imdir, strcat(f_name, '.jpg')));
             pbim_file = fullfile(outdir, strcat(f_name, '_pb.mat'));
             pbim = pbCGTG_nonmax(double(image_f) / 255);
             mat_file_save(pbim_file, pbim);
-            
+
         end
 
     end

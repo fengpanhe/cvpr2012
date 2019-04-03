@@ -47,10 +47,10 @@ function trainBoundaryClassifier()
 
     thresh = [0.105 0.25];
 
-    datadir = fullfile('result', 'ClassifierData');
+    % data_dir = fullfile('result', 'ClassifierData');
 
-    if ~exist(datadir, 'dir')
-        mkdir(datadir);
+    if ~exist(data_dir, 'dir')
+        mkdir(data_dir);
     end
 
     global DO_DISPLAY;
@@ -59,16 +59,16 @@ function trainBoundaryClassifier()
     %% Training
 
     if DO_LOAD
-        load([datadir '/bndClassifiersAll3.mat']);
-        load([datadir '/contClassifiersAll3.mat']);
+        load([data_dir '/bndClassifiersAll3.mat']);
+        load([data_dir '/contClassifiersAll3.mat']);
     end
 
     if DO_READ
-        disp(['Reading from ' gtdir]);
+        disp(['Reading from ' gt_dir]);
 
         for f = ftrain
-            tmp = load(fullfile(gtdir, [strtok(fn{f}, '.') '_gt.mat']));
-            bndinfo(f) = tmp.bndinfo;
+            tmp = load(fullfile(gt_dir, [strtok(fn{f}, '.') '_gt.mat']));
+            bndinfo_list(f) = tmp.bndinfo;
         end
 
         clear tmp;
@@ -78,7 +78,7 @@ function trainBoundaryClassifier()
         s = STAGES(1);
         disp(['Restarting from after stage ' num2str(s - 1)]);
         %load(['./data/tmp/segmaps' num2str(s-1) '.mat'], 'segmaps');
-        load([datadir 'trainBndinfo' num2str(s - 1) '.mat']);
+        load([data_dir 'trainBndinfo' num2str(s - 1) '.mat']);
         bndinfo1 = bndinfo2;
         clear bndinfo2;
     end
@@ -91,31 +91,31 @@ function trainBoundaryClassifier()
 
             if DO_FEATURES && s < 3
                 disp('Computing features...');
-                [X(ftrain), Y(ftrain)] = getAllFeatures(bndinfo(ftrain), imdir, pbdir, gcdir);
+                [X(ftrain), Y(ftrain)] = getAllFeatures(bndinfo_list(ftrain), images_dir, pb_dir, gc_dir);
             end
 
             geomparams = [];
 
             if DO_GEOMETRY_PARAMS && s == 3
                 disp('Estimating parameters for geometry regression');
-                geomparams = estimateGeometryRegression(bndinfo(ftrain), X(ftrain), gdatadir);
+                geomparams = estimateGeometryRegression(bndinfo_list(ftrain), X(ftrain), gdatadir);
                 disp(num2str(geomparams));
             end
 
             if DO_FEATURES_GEOMETRY && s == 3
                 disp('Computing features with geometry...');
-                segmaps = bndinfo2segmaps(bndinfo(ftrain), segdir);
-                [X(ftrain), Y(ftrain)] = getAllFeatures(bndinfo(ftrain), imdir, pbdir, ...
-                    gcdir, gdatadir, segmaps, 1, geomparams);
+                segmaps = bndinfo2segmaps(bndinfo_list(ftrain), segdir);
+                [X(ftrain), Y(ftrain)] = getAllFeatures(bndinfo_list(ftrain), images_dir, pb_dir, ...
+                    gc_dir, gdatadir, segmaps, 1, geomparams);
             end
 
         end
 
         if DO_BOUNDARY_CLASSIFIER
             disp('Training boundary...');
-            [dtBnd(s), xtrain] = trainBoundaryClassifier4(X(ftrain), Y(ftrain), bndinfo(ftrain));
-            dtBnd_fast(s) = trainFastBoundaryClassifier(X(ftrain), Y(ftrain), bndinfo(ftrain), 1);
-            save(fullfile(datadir, ['bndClassifiersAll' num2str(s) '.mat']), 'dtBnd', 'dtBnd_fast', 'geomparams');
+            [dtBnd{s}, xtrain] = trainBoundaryClassifier4(X(ftrain), Y(ftrain), bndinfo_list(ftrain));
+            dtBnd_fast{s} = trainFastBoundaryClassifier(X(ftrain), Y(ftrain), bndinfo_list(ftrain), 1);
+            save(fullfile(data_dir, ['bndClassifiersAll' num2str(s) '.mat']), 'dtBnd', 'dtBnd_fast', 'geomparams');
         end
 
         if DO_CONTINUITY_CLASSIFIER
@@ -123,18 +123,18 @@ function trainBoundaryClassifier()
             disp('Training continuity classifier...');
 
             for f = ftrain
-                [pB{f}, trainx{f}] = useBoundaryClassifier(bndinfo(f), X(f), dtBnd(s));
+                [pB{f}, trainx{f}] = useBoundaryClassifier(bndinfo_list(f), X(f), dtBnd{s});
                 pB{f} = [pB{f}(:, [1 2]); pB{f}(:, [1 3])];
             end
 
-            dtCont(s) = trainBoundaryContinuityClassifier(bndinfo(ftrain), X(ftrain), Y(ftrain), pB(ftrain), trainx(ftrain));
-            save([datadir ['contClassifiersAll' num2str(s) '.mat']], 'dtCont');
+            dtCont{s} = trainBoundaryContinuityClassifier(bndinfo_list(ftrain), X(ftrain), Y(ftrain), pB(ftrain), trainx(ftrain));
+            save(fullfile(data_dir, ['contClassifiersAll' num2str(s) '.mat']), 'dtCont');
         end
 
         if DO_UNARY_VALIDATION && s < 3
             [thresh(s), valdata(s)] = validateMergeMinSafe(X(ftrain), ...
-                bndinfo(ftrain), dtBnd(s), dtBnd_fast(s), ERR_THRESH(s));
-            save([datadir 'validationAll.mat'], 'thresh', 'valdata');
+                bndinfo_list(ftrain), dtBnd{s}, dtBnd_fast{s}, ERR_THRESH(s));
+            save(fullfile(data_dir, 'validationAll.mat'), 'thresh', 'valdata');
         end
 
         if s == 3
@@ -146,10 +146,18 @@ function trainBoundaryClassifier()
             if s == 1
                 lastdir = segdir;
             else
-                lastdir = [datadir '/smallsegs/' num2str(s - 1) '/'];
+                lastdir = fullfile(data_dir, 'smallsegs', num2str(s - 1));
             end
 
-            smallsegdir = [datadir '/smallsegs/' num2str(s) '/'];
+            smallsegdir = fullfile(data_dir, 'smallsegs', num2str(s));
+
+            if ~exist(lastdir, 'dir')
+                mkdir(lastdir);
+            end
+
+            if ~exist(smallsegdir, 'dir')
+                mkdir(smallsegdir);
+            end
 
             imind = [ftrain testind];
             if s == 3, imind = testind; end
@@ -157,21 +165,21 @@ function trainBoundaryClassifier()
             for f = imind%numel(fn)
 
                 disp(num2str(f))
-                tmp = load([lastdir strtok(fn{f}, '.') '_seg.mat']);
+                tmp = load(fullfile(lastdir, [strtok(fn{f}, '.') '_seg.mat']));
                 bndinfo = tmp.bndinfo;
 
                 if s < 3
-                    X = getAllFeatures(bndinfo, imdir, pbdir, gcdir);
-                    result = mergeStageMin(X, bndinfo, dtBnd(end), dtBnd_fast(end), 2, thresh(s));
+                    X(f) = getAllFeatures(bndinfo, images_dir, pb_dir, gc_dir);
+                    result = mergeStageMin(X(f), bndinfo, dtBnd{end}, dtBnd_fast{end}, 2, thresh(s));
                     bndinfo = updateBoundaryInfo2(bndinfo, result);
                 else % final stage
 
                     while 1
                         initnsp = bndinfo.nseg;
                         segmaps = bndinfo2segmaps(bndinfo, segdir);
-                        X = getAllFeatures(bndinfo(ftrain), imdir, pbdir, ...
-                            gcdir, gdatadir, segmaps, 1, geomparams);
-                        result = mergeStageMin(X, bndinfo, dtBnd(end), dtBnd_fast(end), 2, thresh(s));
+                        X(f) = getAllFeatures(bndinfo(ftrain), images_dir, pb_dir, ...
+                            gc_dir, gdatadir, segmaps, 1, geomparams);
+                        result = mergeStageMin(X(f), bndinfo, dtBnd{end}, dtBnd_fast{end}, 2, thresh(s));
                         bndinfo = updateBoundaryInfo2(bndinfo, result);
                         finalnsp = numel(result.regions);
 
@@ -183,24 +191,24 @@ function trainBoundaryClassifier()
 
                 end
 
-                save([smallsegdir strtok(fn{f}, '.') '_seg.mat'], 'bndinfo');
+                save(fullfile(smallsegdir, [strtok(fn{f}, '.') '_seg.mat']), 'bndinfo');
 
-                im = im2double(imread([imdir fn{f}]));
-                lim = displayOcclusionResult(im, bndinfo, [], []);
-                imwrite(lim, [smallsegdir 'display/' strtok(fn{f}, '.') '_res.jpg']);
+                % im = im2double(imread(fullfile(images_dir, fn{f})));
+                % lim = displayOcclusionResult(im, bndinfo, [], [], 1);
+                % imwrite(lim, fullfile(smallsegdir, 'display', [strtok(fn{f}, '.') '_res.jpg']));
             end
 
         end
 
         if DO_BP_VALIDATION
             [thresh(s), valdata(s)] = validateMergeBp(X(ftrain), ...
-                bndinfo1(ftrain), dtBnd(s), dtBnd_fast(s), dtCont(s), ERR_THRESH(s));
-            save([datadir 'validationAll.mat'], 'thresh', 'valdata');
+                bndinfo1(ftrain), dtBnd{s}, dtBnd_fast{s}, dtCont{s}, ERR_THRESH(s));
+            save([data_dir 'validationAll.mat'], 'thresh', 'valdata');
         end
 
         if DO_MERGE_MRF
-            lastdir = [datadir '/smallsegs/' num2str(s - 1) '/'];
-            smallsegdir = [datadir '/smallsegs/' num2str(s) '/'];
+            lastdir = [data_dir '/smallsegs/' num2str(s - 1) '/'];
+            smallsegdir = [data_dir '/smallsegs/' num2str(s) '/'];
 
             for f = ftrain
 
@@ -208,12 +216,12 @@ function trainBoundaryClassifier()
                 tmp = load([lastdir strtok(fn{f}, '.') '_seg.mat']);
                 bndinfo = tmp.bndinfo;
 
-                X = getAllFeatures(bndinfo, imdir, pbdir, gcdir);
-                result = mergeStageBp2(X, bndinfo, dtBnd(end), dtBnd_fast(end), dtCont(end), thresh(s));
+                X = getAllFeatures(bndinfo, images_dir, pb_dir, gc_dir);
+                result = mergeStageBp2(X, bndinfo, dtBnd{end}, dtBnd_fast{end}, dtCont{end}, thresh(s));
                 bndinfo = updateBoundaryInfo2(bndinfo, result);
 
                 save([smallsegdir strtok(fn{f}, '.') '_seg.mat'], 'bndinfo');
-                im = im2double(imread([imdir fn{f}]));
+                im = im2double(imread([images_dir fn{f}]));
                 lim = displayOcclusionResult(im, bndinfo, [], []);
                 imwrite(lim, [smallsegdir 'display/' strtok(fn{f}, '.') '_res.jpg']);
             end
@@ -221,8 +229,8 @@ function trainBoundaryClassifier()
         end
 
         if DO_MERGE_MRF_FINAL
-            lastdir = [datadir '/smallsegs/' num2str(s - 1) '/'];
-            smallsegdir = [datadir '/smallsegs/' num2str(s) '_2'' / '];
+            lastdir = [data_dir '/smallsegs/' num2str(s - 1) '/'];
+            smallsegdir = [data_dir '/smallsegs/' num2str(s) '_2'' / '];
 
             for f = testind(151:250)
                 disp(num2str(find(f == testind)))
@@ -239,8 +247,8 @@ function trainBoundaryClassifier()
 
                 dorestimate = 1;
                 [bndinfo, lab, plab_e, plab_g] = ...
-                    mergeStageFinalBpGeometry(bndinfo, dtBnd(s), dtBnd_fast(s), dtCont(s), ...
-                    thresh, imdir, pbdir, gcdir, gdatadir, cvnum, dorestimate);
+                    mergeStageFinalBpGeometry(bndinfo, dtBnd{s}, dtBnd_fast{s}, dtCont{s}, ...
+                    thresh, images_dir, pb_dir, gc_dir, gdatadir, cvnum, dorestimate);
                 lab = lab{1};
 
                 bndinfo.edges.boundaryType = lab;
@@ -252,7 +260,7 @@ function trainBoundaryClassifier()
 
                 save([smallsegdir strtok(fn{f}, '.') '_seg.mat'], 'bndinfo');
 
-                im = im2double(imread([imdir bndinfo.imname]));
+                im = im2double(imread([images_dir bndinfo.imname]));
 
                 outdir = [smallsegdir 'display/'];
                 imwrite(im, [outdir fn{f}]);

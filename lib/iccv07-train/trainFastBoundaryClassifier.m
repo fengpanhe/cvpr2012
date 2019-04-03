@@ -23,8 +23,8 @@ ntrees = 10;
 classifier = train_boosted_dt_2c(tx, categoryFeatures, (ty>0)*2-1, ntrees, nnodes, 0, w);
 %classifier = train_boosted_dt_mc(tx, categoryFeatures, ty, ntrees, nnodes, 0, w);
 
-classifier.prior = hist(ty, unique(ty));
-classifier.prior = classifier.prior / sum(classifier.prior);
+% classifier.prior = hist(ty, unique(ty));
+% classifier.prior = classifier.prior / sum(classifier.prior);
 
 
 %% Reformat the data for classifying between boundary and no boundary

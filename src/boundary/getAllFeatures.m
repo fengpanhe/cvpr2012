@@ -1,7 +1,7 @@
 function [X, Y, gparams] = getAllFeatures(bndinfo, imdir, pbdir, gcdir, ...
         gdatadir, segmaps, cvnum, gparams)
     % [X, Y] = getAllFeatures(bndinfo, imdir, pbdir, gcdir, gdatadir, gclassifiers, segmaps)
-
+    disp(nargin);
     for f = 1:numel(bndinfo)
 
         im = im2double(imread(fullfile(imdir, [bndinfo(f).imname])));
